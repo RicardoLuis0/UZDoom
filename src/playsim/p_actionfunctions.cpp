@@ -1622,6 +1622,11 @@ enum SPFflag
 	SPF_ROLL =				1 << 6,
 	SPF_REPLACE =           1 << 7,
 	SPF_NO_XY_BILLBOARD =	1 << 8,
+	SPF_COLLIDE =			1 << 9,
+	SPF_STICK =				1 << 10,
+	SPF_BOUNCE =			1 << 11,
+	SPF_BOUNCE_SLOW_DOWN =	1 << 12,
+	SPF_COLLIDE_DESTROY =	1 << 13,
 };
 
 DEFINE_ACTION_FUNCTION(AActor, A_SpawnParticle)

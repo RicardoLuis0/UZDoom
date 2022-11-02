@@ -55,6 +55,12 @@ enum EParticleFlags
     PT_NOTIMEFREEZE = 1,
 	PT_DOROLL = 1 << 1,
 	PT_NOXYBILLBOARD = 1 << 2,
+	PT_COLLIDE = 1 << 3,
+	PT_COLLIDE_BOUNCE = 1 << 4,
+	PT_COLLIDE_STICK = 1 << 5,
+	PT_COLLIDE_DESTROY = 1 << 6,
+	PT_BOUNCE_SLOW_DOWN = 1 << 7,
+	PT_COLLIDE_FAST_NO_WALLS = 1 << 8,
 };
 
 struct particle_t
@@ -72,7 +78,11 @@ struct particle_t
     double Roll, RollVel, RollAcc;
     uint16_t    tnext, snext, tprev;
     uint8_t    bright;
-	uint8_t flags;
+	bool zCache;
+	uint16_t flags;
+    //6 bytes of padding
+	const secplane_t * floorPlane;
+	const secplane_t * ceilingPlane;
 };
 
 const uint16_t NO_PARTICLE = 0xffff;
