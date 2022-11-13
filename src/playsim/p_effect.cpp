@@ -110,6 +110,8 @@ inline particle_t *NewParticle (FLevelLocals *Level, bool replace = false)
 		{
 			result = &Level->Particles[Level->OldestParticle];
 
+			int tnext = result->tnext;
+
 			// There should be NO_PARTICLE for the oldest's tnext
 			if (result->tprev != NO_PARTICLE)
 			{
@@ -122,14 +124,16 @@ inline particle_t *NewParticle (FLevelLocals *Level, bool replace = false)
 
 				// now oldest becomes youngest
 				Level->OldestParticle = result->tprev;
-				result->tnext = Level->ActiveParticles;
-				result->tprev = NO_PARTICLE;
+				tnext = Level->ActiveParticles;
 				Level->ActiveParticles = uint32_t(result - Level->Particles.Data());
 
 				// youngest -> 2nd youngest
 				particle_t* ntop = &Level->Particles[result->tnext];
 				ntop->tprev = Level->ActiveParticles;
 			}
+			memset(result, 0, sizeof(particle_t));
+			result->tprev = NO_PARTICLE;
+			result->tnext = tnext;
 		}
 		return result;
 	}
