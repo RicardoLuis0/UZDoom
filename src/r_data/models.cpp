@@ -193,6 +193,8 @@ void RenderModel(FModelRenderer *renderer, float x, float y, float z, FSpriteMod
 	renderer->EndDrawModel(actor->RenderStyle, smf);
 }
 
+CVAR (Bool, r_invert_viewmodel, false, CVAR_ARCHIVE)
+
 void RenderHUDModel(FModelRenderer *renderer, DPSprite *psp, FVector3 translation, FVector3 rotation, FVector3 rotation_pivot, FSpriteModelFrame *smf)
 {
 	AActor * playermo = players[consoleplayer].camera;
@@ -213,25 +215,25 @@ void RenderHUDModel(FModelRenderer *renderer, DPSprite *psp, FVector3 translatio
 		fovscale = 1.f + (fovscale - 1.f) * cl_scaleweaponfov;
 	}
 
+	double xscale  = r_invert_viewmodel ? -smf->xscale : smf->xscale;
+
 	// Scaling model (y scale for a sprite means height, i.e. z in the world!).
-	objectToWorldMatrix.scale(smf->xscale, smf->zscale, smf->yscale / fovscale);
+	objectToWorldMatrix.scale(xscale, smf->zscale, smf->yscale / fovscale);
 
 	// Aplying model offsets (model offsets do not depend on model scalings).
-	objectToWorldMatrix.translate(smf->xoffset / smf->xscale, smf->zoffset / smf->zscale, smf->yoffset / smf->yscale);
+	objectToWorldMatrix.translate(smf->xoffset / xscale, smf->zoffset / smf->zscale, smf->yoffset / smf->yscale);
 
 	// [BB] Weapon bob, very similar to the normal Doom weapon bob.
 
-	
-
 	objectToWorldMatrix.translate(rotation_pivot.X, rotation_pivot.Y, rotation_pivot.Z);
 	
-	objectToWorldMatrix.rotate(rotation.X, 0, 1, 0);
+	objectToWorldMatrix.rotate(r_invert_viewmodel ? -rotation.X : rotation.X, 0, 1, 0);
 	objectToWorldMatrix.rotate(rotation.Y, 1, 0, 0);
-	objectToWorldMatrix.rotate(rotation.Z, 0, 0, 1);
+	objectToWorldMatrix.rotate(r_invert_viewmodel ? -rotation.Z : rotation.Z, 0, 0, 1);
 
 	objectToWorldMatrix.translate(-rotation_pivot.X, -rotation_pivot.Y, -rotation_pivot.Z);
-	
-	objectToWorldMatrix.translate(translation.X, translation.Y, translation.Z);
+
+	objectToWorldMatrix.translate(r_invert_viewmodel ? -translation.X : translation.X, translation.Y, translation.Z);
 	
 
 	// [BB] For some reason the jDoom models need to be rotated.
@@ -242,7 +244,7 @@ void RenderHUDModel(FModelRenderer *renderer, DPSprite *psp, FVector3 translatio
 	objectToWorldMatrix.rotate(smf->pitchoffset, 0, 0, 1);
 	objectToWorldMatrix.rotate(-smf->rolloffset, 1, 0, 0);
 
-	float orientation = smf->xscale * smf->yscale * smf->zscale;
+	float orientation = xscale * smf->yscale * smf->zscale;
 
 	renderer->BeginDrawHUDModel(playermo->RenderStyle, objectToWorldMatrix, orientation < 0);
 	uint32_t trans = psp->GetTranslation() != 0 ? psp->GetTranslation() : 0;
