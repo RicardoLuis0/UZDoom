@@ -1445,12 +1445,12 @@ class GLDefsParser
 		if (usershader.shader.IsNotEmpty())
 		{
 			int firstUserTexture;
-			if ((mlay.Normal || tex->GetNormalmap()) && (mlay.Specular || tex->GetSpecularmap()))
+			if ((mlay.Normal || tex->Normal.get()) && (mlay.Specular || tex->Specular.get()))
 			{
 				usershader.shaderType = SHADER_Specular;
 				firstUserTexture = 7;
 			}
-			else if ((mlay.Normal || tex->GetNormalmap()) && (mlay.Metallic || tex->GetMetallic()) && (mlay.Roughness || tex->GetRoughness()) && (mlay.AmbientOcclusion || tex->GetAmbientOcclusion()))
+			else if ((mlay.Normal || tex->Normal.get()) && (mlay.Metallic || tex->Metallic.get()) && (mlay.Roughness || tex->Roughness.get()) && (mlay.AmbientOcclusion || tex->AmbientOcclusion.get()))
 			{
 				usershader.shaderType = SHADER_PBR;
 				firstUserTexture = 9;

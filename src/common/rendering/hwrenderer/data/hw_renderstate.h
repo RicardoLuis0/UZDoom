@@ -625,7 +625,6 @@ private:
 public:
 	void SetMaterial(FGameTexture* tex, EUpscaleFlags upscalemask, int scaleflags, int clampmode, int translation, int overrideshader)
 	{
-		tex->setSeen();
 		if (!sysCallbacks.PreBindTexture || !sysCallbacks.PreBindTexture(this, tex, upscalemask, scaleflags, clampmode, translation, overrideshader))
 		{
 			if (shouldUpscale(tex, upscalemask)) scaleflags |= CTF_Upscale;

@@ -140,27 +140,16 @@ void FGameTexture::AddAutoMaterials()
 		const char* path;
 		RefCountedPtr<FTexture> FGameTexture::* pointer;
 	};
-	struct AutoTextureSearchPath2
-	{
-		const char* path;
-		RefCountedPtr<FTexture> FMaterialLayers::* pointer;
-	};
 
 	static AutoTextureSearchPath autosearchpaths[] =
 	{
 		{ "brightmaps/", &FGameTexture::Brightmap }, // For backwards compatibility, only for short names
 	{ "materials/brightmaps/", &FGameTexture::Brightmap },
-	};
-
-	static AutoTextureSearchPath2 autosearchpaths2[] =
-	{
-	{ "materials/detailmaps/", &FMaterialLayers::Detailmap },
-	{ "materials/glowmaps/", &FMaterialLayers::Glowmap },
-	{ "materials/normalmaps/", &FMaterialLayers::Normal },
-	{ "materials/specular/", &FMaterialLayers::Specular },
-	{ "materials/metallic/", &FMaterialLayers::Metallic },
-	{ "materials/roughness/", &FMaterialLayers::Roughness },
-	{ "materials/ao/", &FMaterialLayers::AmbientOcclusion }
+	{ "materials/normalmaps/", &FGameTexture::Normal },
+	{ "materials/specular/", &FGameTexture::Specular },
+	{ "materials/metallic/", &FGameTexture::Metallic },
+	{ "materials/roughness/", &FGameTexture::Roughness },
+	{ "materials/ao/", &FGameTexture::AmbientOcclusion }
 	};
 
 	if (flags & GTexf_AutoMaterialsAdded) return; // do this only once
@@ -188,24 +177,6 @@ void FGameTexture::AddAutoMaterials()
 				if (bmtex != nullptr)
 				{
 					this->*(layer.pointer) = bmtex->GetTexture();
-				}
-			}
-		}
-	}
-	for (size_t i = 0; i < countof(autosearchpaths2); i++)
-	{
-		auto& layer = autosearchpaths2[i];
-		if (!this->Layers || this->Layers.get()->*(layer.pointer) == nullptr)	// only if no explicit assignment had been done.
-		{
-			FStringf lookup("%s%s%s", layer.path, fullname ? "" : "auto/", searchname.GetChars());
-			auto lump = fileSystem.CheckNumForFullName(lookup, false, ns_global, true);
-			if (lump != -1)
-			{
-				auto bmtex = TexMan.FindGameTexture(fileSystem.GetFileFullName(lump), ETextureType::Any, FTextureManager::TEXMAN_TryAny);
-				if (bmtex != nullptr)
-				{
-					if (this->Layers == nullptr) this->Layers = std::make_unique<FMaterialLayers>();
-					this->Layers.get()->* (layer.pointer) = bmtex->GetTexture();
 				}
 			}
 		}
@@ -312,7 +283,7 @@ bool FGameTexture::ShouldExpandSprite()
 		expandSprite = false;
 		return false;
 	}
-	if (Layers && Layers->Glowmap != NULL && (Base->GetWidth() != Layers->Glowmap->GetWidth() || Base->GetHeight() != Layers->Glowmap->GetHeight()))
+	if (Glowmap != NULL && (Base->GetWidth() != Glowmap->GetWidth() || Base->GetHeight() != Glowmap->GetHeight()))
 	{
 		// same restriction for the glow map
 		expandSprite = false;
