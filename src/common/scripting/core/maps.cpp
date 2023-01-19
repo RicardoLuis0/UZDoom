@@ -118,8 +118,16 @@ template<typename M> unsigned int MapCountUsed(M * self)
 template<typename M> expand_types_vm<typename M::ValueType> MapGet(M * self,expand_types_vm<typename M::KeyType> key)
 {
     typename M::ValueType * v = self->CheckKey(key);
-    if (v) {
-        return *v;
+    if (v)
+    {
+        if constexpr(std::is_same_v<typename M::ValueType, DObject*>)
+        {
+            return GC::ReadBarrier(*v);
+        }
+        else
+        {
+            return *v;
+        }
     }
     else
     {
@@ -148,7 +156,6 @@ template<typename M> int MapCheckKey(M * self, expand_types_vm<typename M::KeyTy
 {
     return self->CheckKey(key) != nullptr;
 }
-
 
 //==========================================================================
 //
@@ -240,7 +247,14 @@ template<typename I> void MapIteratorGetKeyString(I * self, FString &out)
 
 template<typename I> expand_types_vm<typename I::ValueType> MapIteratorGetValue(I * self)
 {
-    return self->GetValue();
+    if constexpr(std::is_same_v<typename I::ValueType, DObject*>)
+    {
+        return GC::ReadBarrier(self->GetValue());
+    }
+    else
+    {
+        return self->GetValue();
+    }
 }
 
 template<typename I> void MapIteratorGetValueString(I * self, FString &out)
