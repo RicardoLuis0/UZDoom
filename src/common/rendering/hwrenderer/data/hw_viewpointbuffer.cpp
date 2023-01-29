@@ -124,6 +124,8 @@ void HWViewpointBuffer::Clear()
 
 	if (needNewPipeline)
 	{
+		mLastMappedIndex = UINT_MAX;
+
 		mPipelinePos++;
 		mPipelinePos %= mPipelineNbr;
 	}
