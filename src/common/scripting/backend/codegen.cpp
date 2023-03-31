@@ -2688,30 +2688,9 @@ bool FxAssign::RequestAddress(FCompileContext &ctx, bool *writable)
 }
 */
 
-static bool IsWholeStructWritable(FCompileContext &ctx, PStruct *s)
+static bool IsStructAssignable(FCompileContext &ctx, PStruct *s)
 {
-	auto it = s->Symbols.GetIterator();
-	PSymbolTable::MapType::Pair *p;
-	while(it.NextPair(p))
-	{
-		PField * f;
-		if((f = dyn_cast<PField>(p->Value)))
-		{
-			if(!ctx.IsWritable(f->Flags, f->mDefFileNo))
-			{
-				return false;
-			}
-			else if(f->Type->isMapIterator())
-			{ // map iterators aren't assignable
-				return false;
-			}
-			else if(f->Type->isStruct() && !static_cast<PStruct*>(f->Type)->isNative && !IsWholeStructWritable(ctx,static_cast<PStruct*>(f->Type)))
-			{ // recurse for nested structs, TODO calculate this on compile-time
-				return false;
-			}
-		}
-	}
-	return true;
+	return s->isAssignable || s->isInternallyAssignable && fileSystem.GetFileContainer(ctx.Lump) == s->mDefFileNo;
 }
 
 FxExpression *FxAssign::Resolve(FCompileContext &ctx)
@@ -2898,7 +2877,7 @@ FxExpression *FxAssign::Resolve(FCompileContext &ctx)
 						return nullptr;
 					}
 
-					if(!IsWholeStructWritable(ctx, s))
+					if(!IsStructAssignable(ctx, s))
 					{
 						ScriptPosition.Message(MSG_ERROR, "All Struct fields must be modifiable");
 						delete this;
@@ -3098,17 +3077,8 @@ FxExpression *FxComplexStructAssign::Resolve(FCompileContext &ctx)
 	return this;
 }
 
-/*
-static bool IsStructFieldComplex(const PType *fieldtype){
-	return fieldtype->isDynArray()
-		|| fieldtype->isMap()
-		|| fieldtype->isMapIterator()
-		|| fieldtype->isObjectPointer()
-		|| (  fieldtype->isStruct()
-		&& !static_cast<PStruct *>(fieldtype)->isNative
-		&& !static_cast<PStruct *>(fieldtype)->isSimple;
-}
-*/
+extern bool isComplexTypeForStruct(PType * fieldtype);
+
 ExpEmit FxComplexStructAssign::Emit(VMFunctionBuilder *build)
 { //  assign each member one at a time (TODO optimization: use memcpy for groups of simple values)
 	ExpEmit base = Base->Emit(build);
@@ -3117,13 +3087,13 @@ ExpEmit FxComplexStructAssign::Emit(VMFunctionBuilder *build)
 
 	TArray<PField*> sortedFields;
 
-	{
+	{ // TODO: cache this per type
 		auto it = Type->Symbols.GetIterator();
 		PSymbolTable::MapType::Pair *p;
 		while(it.NextPair(p))
 		{
-			if(PField * f; f = dyn_cast<PField>(p->Value))
-			{
+			if(PField * f; (f = dyn_cast<PField>(p->Value)) && !(f->Flags & VARF_Meta))
+			{ // store all fields
 				sortedFields.Push(f);
 			}
 		}
@@ -3138,8 +3108,8 @@ ExpEmit FxComplexStructAssign::Emit(VMFunctionBuilder *build)
 
 	struct field_group
 	{
-		int start_offset;
-		int size;
+		int start_index;
+		int end_index;
 	};
 
 	TArray<field_group> simple_variables;
@@ -3150,7 +3120,9 @@ ExpEmit FxComplexStructAssign::Emit(VMFunctionBuilder *build)
 
 	TArray<PField *> objects;
 
-	for(int i = 0; i < sortedFields.Size(); i++)
+	int simple_start = -1;
+
+	for(size_t i = 0; i < sortedFields.Size(); i++)
 	{
 	}
 
