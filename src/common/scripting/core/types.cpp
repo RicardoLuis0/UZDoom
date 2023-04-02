@@ -360,6 +360,8 @@ void PType::StaticInit()
 	TypeVector2->RegCount = 2;
 	TypeVector2->isOrdered = true;
 	TypeVector2->mDescriptiveName = "Vector2";
+	TypeVector2->isSimple = true;
+	TypeVector2->isAssignable = true;
 
 	TypeVector3 = new PStruct(NAME_Vector3, nullptr);
 	TypeVector3->AddField(NAME_X, TypeFloat64);
@@ -375,6 +377,8 @@ void PType::StaticInit()
 	TypeVector3->RegCount = 3;
 	TypeVector3->isOrdered = true;
 	TypeVector3->mDescriptiveName = "Vector3";
+	TypeVector3->isSimple = true;
+	TypeVector3->isAssignable = true;
 
 	TypeVector4 = new PStruct(NAME_Vector4, nullptr);
 	TypeVector4->AddField(NAME_X, TypeFloat64);
@@ -392,6 +396,8 @@ void PType::StaticInit()
 	TypeVector4->RegCount = 4;
 	TypeVector4->isOrdered = true;
 	TypeVector4->mDescriptiveName = "Vector4";
+	TypeVector4->isSimple = true;
+	TypeVector4->isAssignable = true;
 
 
 	TypeFVector2 = new PStruct(NAME_FVector2, nullptr);
@@ -406,6 +412,8 @@ void PType::StaticInit()
 	TypeFVector2->isOrdered = true;
 	TypeFVector2->mDescriptiveName = "FVector2";
 	TypeFVector2->SetLocalType(TypeVector2);
+	TypeFVector2->isSimple = true;
+	TypeFVector2->isAssignable = true;
 
 	TypeFVector3 = new PStruct(NAME_FVector3, nullptr);
 	TypeFVector3->AddField(NAME_X, TypeFloat32);
@@ -422,6 +430,8 @@ void PType::StaticInit()
 	TypeFVector3->isOrdered = true;
 	TypeFVector3->mDescriptiveName = "FVector3";
 	TypeFVector3->SetLocalType(TypeVector3);
+	TypeFVector3->isSimple = true;
+	TypeFVector3->isAssignable = true;
 
 	TypeFVector4 = new PStruct(NAME_FVector4, nullptr);
 	TypeFVector4->AddField(NAME_X, TypeFloat32);
@@ -440,6 +450,8 @@ void PType::StaticInit()
 	TypeFVector4->isOrdered = true;
 	TypeFVector4->mDescriptiveName = "FVector4";
 	TypeFVector4->SetLocalType(TypeVector4);
+	TypeFVector4->isSimple = true;
+	TypeFVector4->isAssignable = true;
 
 
 	TypeQuaternion = new PStruct(NAME_Quat, nullptr);
@@ -458,6 +470,8 @@ void PType::StaticInit()
 	TypeQuaternion->RegCount = 4;
 	TypeQuaternion->mDescriptiveName = "Quat";
 	TypeQuaternion->isOrdered = true;
+	TypeQuaternion->isSimple = true;
+	TypeQuaternion->isAssignable = true;
 
 	TypeFQuaternion = new PStruct(NAME_FQuat, nullptr);
 	TypeFQuaternion->AddField(NAME_X, TypeFloat32);
@@ -476,6 +490,8 @@ void PType::StaticInit()
 	TypeFQuaternion->isOrdered = true;
 	TypeFQuaternion->mDescriptiveName = "FQuat";
 	TypeFQuaternion->SetLocalType(TypeQuaternion);
+	TypeFQuaternion->isSimple = true;
+	TypeFQuaternion->isAssignable = true;
 
 
 	Namespaces.GlobalNamespace->Symbols.AddSymbol(Create<PSymbolType>(NAME_sByte, TypeSInt8));
