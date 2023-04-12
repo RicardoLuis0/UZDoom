@@ -69,6 +69,12 @@ public:
 	//double FindConstantFloat(unsigned index);
 	//void * FindConstantAddress(unsigned index);
 	//const FString& FindConstantString(unsigned index);
+	
+	// Emit constant register holding the value
+	ExpEmit EmitConstantInt(int val);
+
+	// Return the value of the constant register
+	int ReadConstantInt(unsigned regnum);
 
 	unsigned AllocConstantsInt(unsigned int count, int *values);
 	unsigned AllocConstantsFloat(unsigned int count, double *values);
