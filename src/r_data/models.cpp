@@ -426,6 +426,8 @@ static TArray<int> SpriteModelHash;
 
 static void ParseModelDefLump(int Lump);
 
+extern uint64_t iqm_total_load_time_ns;
+
 void InitModels()
 {
 	Models.DeleteAndClear();
@@ -492,6 +494,8 @@ void InitModels()
 	{
 		ParseModelDefLump(Lump);
 	}
+
+	Printf("Loading IQM Models took %.4f ms\n",iqm_total_load_time_ns / 1000'000.0);
 
 	// create a hash table for quick access
 	SpriteModelHash.Resize(SpriteModelFrames.Size ());

@@ -20,7 +20,7 @@ struct IQMMesh
 	FTextureID Skin;
 };
 
-enum IQMVertexArrayType
+enum IQMVertexArrayType : uint32_t
 {
 	IQM_POSITION = 0,     // float, 3
 	IQM_TEXCOORD = 1,     // float, 2
@@ -32,7 +32,7 @@ enum IQMVertexArrayType
 	IQM_CUSTOM = 0x10
 };
 
-enum IQMVertexArrayFormat
+enum IQMVertexArrayFormat : uint32_t
 {
 	IQM_BYTE = 0,
 	IQM_UBYTE = 1,
@@ -122,12 +122,6 @@ private:
 	void LoadGeometry();
 	void UnloadGeometry();
 
-	void LoadPosition(IQMFileReader& reader, const IQMVertexArray& vertexArray);
-	void LoadTexcoord(IQMFileReader& reader, const IQMVertexArray& vertexArray);
-	void LoadNormal(IQMFileReader& reader, const IQMVertexArray& vertexArray);
-	void LoadBlendIndexes(IQMFileReader& reader, const IQMVertexArray& vertexArray);
-	void LoadBlendWeights(IQMFileReader& reader, const IQMVertexArray& vertexArray);
-
 	int mLumpNum = -1;
 	TArray<IQMMesh> Meshes;
 	TArray<IQMTriangle> Triangles;
@@ -144,80 +138,4 @@ private:
 	TArray<VSMatrix> baseframe;
 	TArray<VSMatrix> inversebaseframe;
 	TArray<TRS> TRSData;
-};
-
-struct IQMReadErrorException { };
-
-class IQMFileReader
-{
-public:
-	IQMFileReader(const void* buffer, int length) : buffer((const char*)buffer), length(length) { }
-
-	uint8_t ReadUByte()
-	{
-		uint8_t value;
-		Read(&value, sizeof(uint8_t));
-		return value;
-	}
-
-	int32_t ReadInt32()
-	{
-		int32_t value;
-		Read(&value, sizeof(int32_t));
-		value = LittleLong(value);
-		return value;
-	}
-
-	int16_t ReadInt16()
-	{
-		int16_t value;
-		Read(&value, sizeof(int16_t));
-		value = LittleShort(value);
-		return value;
-	}
-
-	uint32_t ReadUInt32()
-	{
-		return ReadInt32();
-	}
-
-	uint16_t ReadUInt16()
-	{
-		return ReadInt16();
-	}
-
-	float ReadFloat()
-	{
-		float value;
-		Read(&value, sizeof(float));
-		return value;
-	}
-
-	FString ReadName(const TArray<char>& textBuffer)
-	{
-		uint32_t nameOffset = ReadUInt32();
-		if (nameOffset >= textBuffer.Size())
-			throw IQMReadErrorException();
-		return textBuffer.Data() + nameOffset;
-	}
-
-	void Read(void* data, int size)
-	{
-		if (pos + size > length || size < 0 || size > 0x0fffffff)
-			throw IQMReadErrorException();
-		memcpy(data, buffer + pos, size);
-		pos += size;
-	}
-
-	void SeekTo(int newPos)
-	{
-		if (newPos < 0 || newPos > length)
-			throw IQMReadErrorException();
-		pos = newPos;
-	}
-
-private:
-	const char* buffer = nullptr;
-	int length = 0;
-	int pos = 0;
 };

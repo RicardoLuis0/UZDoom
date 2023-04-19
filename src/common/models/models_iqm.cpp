@@ -7,6 +7,9 @@
 #include "engineerrors.h"
 #include "dobject.h"
 #include "bonecomponents.h"
+#include "i_time.h"
+
+#include <bit>
 
 IMPLEMENT_CLASS(DBoneComponents, false, false);
 
@@ -19,143 +22,265 @@ IQMModel::~IQMModel()
 {
 }
 
+struct iqm_header_t
+{
+	uint64_t magic1;
+	uint64_t magic2;
+
+	uint32_t version;
+	uint32_t filesize;
+	uint32_t flags;
+	uint32_t num_text, ofs_text;
+	uint32_t num_meshes, ofs_meshes;
+	uint32_t num_vertexarrays, num_vertices, ofs_vertexarrays;
+	uint32_t num_triangles, ofs_triangles, ofs_adjacency;
+	uint32_t num_joints, ofs_joints;
+	uint32_t num_poses, ofs_poses;
+	uint32_t num_anims, ofs_anims;
+	uint32_t num_frames, num_framechannels, ofs_frames, ofs_bounds;
+	uint32_t num_comment, ofs_comment;
+	uint32_t num_extensions, ofs_extensions;
+};
+
+static_assert(sizeof(iqm_header_t) == (4 * 32));
+
+struct iqm_mesh_t
+{
+	uint32_t name;
+	uint32_t material;
+	uint32_t first_vertex, num_vertices;
+	uint32_t first_triangle, num_triangles;
+};
+
+static_assert(sizeof(iqm_mesh_t) == (4 * 6));
+//static_assert(sizeof(iqm_mesh_t) == sizeof(IQMMesh)); -- IQMMesh isn't initialized via memcpy, so this isn't required
+
+struct iqm_vertex_array_t
+{
+	uint32_t type;
+	uint32_t flags;
+	uint32_t format;
+	uint32_t size;
+	uint32_t offset;
+};
+
+static_assert(sizeof(iqm_vertex_array_t) == (4 * 5));
+static_assert(sizeof(iqm_vertex_array_t) == sizeof(IQMVertexArray));
+
+struct iqm_triangle_t
+{
+	uint32_t vertex[3];
+};
+
+static_assert(sizeof(iqm_triangle_t) == (4 * 3));
+static_assert(sizeof(iqm_triangle_t) == sizeof(IQMTriangle));
+
+struct iqm_adjacency_t
+{
+	uint32_t triangle[3];
+};
+
+static_assert(sizeof(iqm_adjacency_t) == (4 * 3));
+static_assert(sizeof(iqm_adjacency_t) == sizeof(IQMAdjacency));
+
+//static_assert(sizeof(iqm_triangle_t) == sizeof(iqm_adjacency_t));
+
+struct iqm_joint_t
+{
+	uint32_t name;
+	int32_t parent;
+	FVector3 translation;
+	FVector4 rotation;
+	FVector3 scale;
+};
+
+static_assert(sizeof(iqm_joint_t) == (4 * 12));
+//static_assert(sizeof(iqm_joint_t) == sizeof(IQMJoint)); -- IQMJoint isn't initialized via memcpy, so this isn't required
+
+struct iqm_pose_t
+{
+	int32_t parent;
+	uint32_t channelmask;
+	float channeloffset[10];
+	float channelscale[10];
+};
+
+static_assert(sizeof(iqm_pose_t) == (4 * 22));
+static_assert(sizeof(iqm_pose_t) == sizeof(IQMPose));
+
+enum iqm_anim_flags_e
+{
+	IQM_LOOP = 1<<0
+};
+
+struct iqm_anim_t
+{
+	uint32_t name;
+	uint32_t first_frame, num_frames;
+	float framerate;
+	uint32_t flags;
+};
+
+static_assert(sizeof(iqm_anim_t) == (4 * 5));
+//static_assert(sizeof(iqm_anim_t) == sizeof(IQMAnim)); -- IQMAnim isn't initialized via memcpy, so this isn't required
+
+struct iqm_bounds_t
+{
+	FVector3 bbmins, bbmaxs;
+	float xyradius, radius;
+};
+
+static_assert(sizeof(iqm_bounds_t) == (4 * 8));
+static_assert(sizeof(iqm_bounds_t) == sizeof(IQMBounds));
+
+constexpr uint64_t magic_to_bytes(const char * s)
+{
+	return
+		(uint64_t(s[0]) <<  0)
+		| (uint64_t(s[1]) <<  8)
+		| (uint64_t(s[2]) << 16)
+		| (uint64_t(s[3]) << 24)
+		| (uint64_t(s[4]) << 32)
+		| (uint64_t(s[5]) << 40)
+		| (uint64_t(s[6]) << 48)
+		| (uint64_t(s[7]) << 56);
+}
+
+constexpr uint64_t magic1 = magic_to_bytes("INTERQUA");
+constexpr uint64_t magic2 = magic_to_bytes("KEMODEL\0");
+
+inline unsigned mask_bits(unsigned m)
+{ // count bits in the 10-bit iqm mask
+	return  m&1
+		+ ((m&2) >> 1)
+		+ ((m&4) >> 2)
+		+ ((m&8) >> 3)
+		+ ((m&16) >> 4)
+		+ ((m&32) >> 5)
+		+ ((m&64) >> 6)
+		+ ((m&128) >> 7)
+		+ ((m&256) >> 8)
+		+ ((m&512) >> 9);
+}
+
+uint64_t iqm_total_load_time_ns = 0;
+
 bool IQMModel::Load(const char* path, int lumpnum, const char* buffer, int length)
 {
 	mLumpNum = lumpnum;
 
-	try
+	uint64_t loadStartTime = I_nsTime();
+
+	if(length < sizeof(iqm_header_t))
 	{
-		IQMFileReader reader(buffer, length);
+		return false;
+	}
 
-		char magic[16];
-		reader.Read(magic, 16);
-		if (memcmp(magic, "INTERQUAKEMODEL\0", 16) != 0)
+	iqm_header_t h;
+
+	memcpy(&h, buffer, sizeof(iqm_header_t));
+
+	if (h.magic1 != magic1 || h.magic2 != magic2 || h.version != 2 || h.num_text == 0)
+		return false;
+
+	/*if (num_joints <= 0)
+	{
+		Printf("Invalid model: \"%s%s\", no joint data is present\n", path, fileSystem.GetLongName(mLumpNum).GetChars());
+		return false;
+	}*/
+
+	const char * text = buffer + h.ofs_text;
+
+	Meshes.Resize(h.num_meshes);
+	Triangles.Resize(h.num_triangles);
+	Adjacency.Resize(h.num_triangles);
+	Joints.Resize(h.num_joints);
+	Poses.Resize(h.num_poses);
+	Anims.Resize(h.num_anims);
+	Bounds.Resize(h.num_frames);
+	VertexArrays.Resize(h.num_vertexarrays);
+	NumVertices = h.num_vertices;
+
+	{
+		iqm_mesh_t * m = (iqm_mesh_t *) (buffer + h.ofs_meshes);
+		for (uint32_t i = 0; i < h.num_meshes; i++, m++)
+		{
+			if(m->name >= h.num_text || m->material >= h.num_text)
+			{
+				return false;
+			}
+			Meshes[i].Name = FString(text + m->name);
+			Meshes[i].Material = FString(text + m->material);
+			Meshes[i].FirstVertex = m->first_vertex;
+			Meshes[i].NumVertices = m->num_vertices;
+			Meshes[i].FirstTriangle = m->first_triangle;
+			Meshes[i].NumTriangles = m->num_triangles;
+			Meshes[i].Skin = LoadSkin(path, Meshes[i].Material.GetChars());
+		}
+	}
+
+	{
+
+		size_t tri_adj_size = sizeof(iqm_triangle_t) * h.num_triangles;
+
+		if((h.ofs_triangles + tri_adj_size) > length || (h.ofs_adjacency + tri_adj_size) > length)
+		{
 			return false;
+		}
 
-		uint32_t version = reader.ReadUInt32();
-		if (version != 2)
+		memcpy(Triangles.Data(), buffer + h.ofs_triangles, tri_adj_size);
+		memcpy(Adjacency.Data(), buffer + h.ofs_adjacency, tri_adj_size);
+	}
+
+	{
+		iqm_joint_t * j = (iqm_joint_t *) (buffer + h.ofs_joints);
+		for (uint32_t i = 0; i < h.num_joints; i++, j++)
+		{
+			if(j->name >= h.num_text)
+			{
+				return false;
+			}
+			Joints[i].Name = FString(text + j->name);
+			Joints[i].Parent = j->parent;
+			Joints[i].Translate = j->translation;
+			Joints[i].Quaternion = j->rotation;
+			Joints[i].Scale = j->scale;
+			Joints[i].Quaternion.MakeUnit();
+		}
+	}
+		
+	{
+		size_t pose_size = sizeof(iqm_pose_t) * h.num_poses;
+
+		if((h.ofs_poses + pose_size) > length)
+		{
 			return false;
-
-		uint32_t filesize = reader.ReadUInt32();
-		uint32_t flags = reader.ReadUInt32();
-		uint32_t num_text = reader.ReadUInt32();
-		uint32_t ofs_text = reader.ReadUInt32();
-		uint32_t num_meshes = reader.ReadUInt32();
-		uint32_t ofs_meshes = reader.ReadUInt32();
-		uint32_t num_vertexarrays = reader.ReadUInt32();
-		uint32_t num_vertices = reader.ReadUInt32();
-		uint32_t ofs_vertexarrays = reader.ReadUInt32();
-		uint32_t num_triangles = reader.ReadUInt32();
-		uint32_t ofs_triangles = reader.ReadUInt32();
-		uint32_t ofs_adjacency = reader.ReadUInt32();
-		uint32_t num_joints = reader.ReadUInt32();
-		uint32_t ofs_joints = reader.ReadUInt32();
-		uint32_t num_poses = reader.ReadUInt32();
-		uint32_t ofs_poses = reader.ReadUInt32();
-		uint32_t num_anims = reader.ReadUInt32();
-		uint32_t ofs_anims = reader.ReadUInt32();
-		uint32_t num_frames = reader.ReadUInt32();
-		uint32_t num_framechannels = reader.ReadUInt32();
-		uint32_t ofs_frames = reader.ReadUInt32();
-		uint32_t ofs_bounds = reader.ReadUInt32();
-		uint32_t num_comment = reader.ReadUInt32();
-		uint32_t ofs_comment = reader.ReadUInt32();
-		uint32_t num_extensions = reader.ReadUInt32();
-		uint32_t ofs_extensions = reader.ReadUInt32();
-
-		/*if (num_joints <= 0)
-		{
-			Printf("Invalid model: \"%s%s\", no joint data is present\n", path, fileSystem.GetLongName(mLumpNum).GetChars());
-			return false;
-		}*/
-
-		if (num_text == 0)
-			return false;
-
-		TArray<char> text(num_text, true);
-		reader.SeekTo(ofs_text);
-		reader.Read(text.Data(), text.Size());
-		text[text.Size() - 1] = 0;
-
-		Meshes.Resize(num_meshes);
-		Triangles.Resize(num_triangles);
-		Adjacency.Resize(num_triangles);
-		Joints.Resize(num_joints);
-		Poses.Resize(num_poses);
-		Anims.Resize(num_anims);
-		Bounds.Resize(num_frames);
-		VertexArrays.Resize(num_vertexarrays);
-		NumVertices = num_vertices;
-
-		reader.SeekTo(ofs_meshes);
-		for (IQMMesh& mesh : Meshes)
-		{
-			mesh.Name = reader.ReadName(text);
-			mesh.Material = reader.ReadName(text);
-			mesh.FirstVertex = reader.ReadUInt32();
-			mesh.NumVertices = reader.ReadUInt32();
-			mesh.FirstTriangle = reader.ReadUInt32();
-			mesh.NumTriangles = reader.ReadUInt32();
-			mesh.Skin = LoadSkin(path, mesh.Material.GetChars());
 		}
 
-		reader.SeekTo(ofs_triangles);
-		for (IQMTriangle& triangle : Triangles)
+		memcpy(Poses.Data(), buffer + h.ofs_poses, pose_size);
+	}
+		
+	{
+		iqm_anim_t * a = (iqm_anim_t *) (buffer + h.ofs_anims);
+		for (uint32_t i = 0; i < h.num_anims; i++, a++)
 		{
-			triangle.Vertex[0] = reader.ReadUInt32();
-			triangle.Vertex[1] = reader.ReadUInt32();
-			triangle.Vertex[2] = reader.ReadUInt32();
+			if(a->name >= h.num_text)
+			{
+				return false;
+			}
+			Anims[i].Name = FString(text + a->name);
+			Anims[i].FirstFrame = a->first_frame;
+			Anims[i].NumFrames = a->num_frames;
+			Anims[i].Framerate = a->framerate;
+			Anims[i].Loop = a->flags & IQM_LOOP;
 		}
+	}
 
-		reader.SeekTo(ofs_adjacency);
-		for (IQMAdjacency& adj : Adjacency)
-		{
-			adj.Triangle[0] = reader.ReadUInt32();
-			adj.Triangle[1] = reader.ReadUInt32();
-			adj.Triangle[2] = reader.ReadUInt32();
-		}
+	{
+		baseframe.Resize(h.num_joints);
+		inversebaseframe.Resize(h.num_joints);
 
-		reader.SeekTo(ofs_joints);
-		for (IQMJoint& joint : Joints)
-		{
-			joint.Name = reader.ReadName(text);
-			joint.Parent = reader.ReadInt32();
-			joint.Translate.X = reader.ReadFloat();
-			joint.Translate.Y = reader.ReadFloat();
-			joint.Translate.Z = reader.ReadFloat();
-			joint.Quaternion.X = reader.ReadFloat();
-			joint.Quaternion.Y = reader.ReadFloat();
-			joint.Quaternion.Z = reader.ReadFloat();
-			joint.Quaternion.W = reader.ReadFloat();
-			joint.Quaternion.MakeUnit();
-			joint.Scale.X = reader.ReadFloat();
-			joint.Scale.Y = reader.ReadFloat();
-			joint.Scale.Z = reader.ReadFloat();
-		}
-
-		reader.SeekTo(ofs_poses);
-		for (IQMPose& pose : Poses)
-		{
-			pose.Parent = reader.ReadInt32();
-			pose.ChannelMask = reader.ReadUInt32();
-			for (int i = 0; i < 10; i++) pose.ChannelOffset[i] = reader.ReadFloat();
-			for (int i = 0; i < 10; i++) pose.ChannelScale[i] = reader.ReadFloat();
-		}
-
-		reader.SeekTo(ofs_anims);
-		for (IQMAnim& anim : Anims)
-		{
-			anim.Name = reader.ReadName(text);
-			anim.FirstFrame = reader.ReadUInt32();
-			anim.NumFrames = reader.ReadUInt32();
-			anim.Framerate = reader.ReadFloat();
-			anim.Loop = !!(reader.ReadUInt32() & 1);
-		}
-
-		baseframe.Resize(num_joints);
-		inversebaseframe.Resize(num_joints);
-
-		for (uint32_t i = 0; i < num_joints; i++)
+		for (uint32_t i = 0; i < h.num_joints; i++)
 		{
 			const IQMJoint& j = Joints[i];
 
@@ -178,252 +303,254 @@ bool IQMModel::Load(const char* path, int lumpnum, const char* buffer, int lengt
 				inversebaseframe[i] = invm;
 			}			
 		}
-
-		TRSData.Resize(num_frames * num_poses);
-		reader.SeekTo(ofs_frames);
-		for (uint32_t i = 0; i < num_frames; i++)
-		{
-			for (uint32_t j = 0; j < num_poses; j++)
-			{
-				const IQMPose& p = Poses[j];
-
-				FVector3 translate;
-				translate.X = p.ChannelOffset[0]; if (p.ChannelMask & 0x01) translate.X += reader.ReadUInt16() * p.ChannelScale[0];
-				translate.Y = p.ChannelOffset[1]; if (p.ChannelMask & 0x02) translate.Y += reader.ReadUInt16() * p.ChannelScale[1];
-				translate.Z = p.ChannelOffset[2]; if (p.ChannelMask & 0x04) translate.Z += reader.ReadUInt16() * p.ChannelScale[2];
-
-				FVector4 quaternion;
-				quaternion.X = p.ChannelOffset[3]; if (p.ChannelMask & 0x08) quaternion.X += reader.ReadUInt16() * p.ChannelScale[3];
-				quaternion.Y = p.ChannelOffset[4]; if (p.ChannelMask & 0x10) quaternion.Y += reader.ReadUInt16() * p.ChannelScale[4];
-				quaternion.Z = p.ChannelOffset[5]; if (p.ChannelMask & 0x20) quaternion.Z += reader.ReadUInt16() * p.ChannelScale[5];
-				quaternion.W = p.ChannelOffset[6]; if (p.ChannelMask & 0x40) quaternion.W += reader.ReadUInt16() * p.ChannelScale[6];
-				quaternion.MakeUnit();
-
-				FVector3 scale;
-				scale.X = p.ChannelOffset[7]; if (p.ChannelMask & 0x80) scale.X += reader.ReadUInt16() * p.ChannelScale[7];
-				scale.Y = p.ChannelOffset[8]; if (p.ChannelMask & 0x100) scale.Y += reader.ReadUInt16() * p.ChannelScale[8];
-				scale.Z = p.ChannelOffset[9]; if (p.ChannelMask & 0x200) scale.Z += reader.ReadUInt16() * p.ChannelScale[9];
-
-				TRSData[i * num_poses + j].translation = translate;
-				TRSData[i * num_poses + j].rotation = quaternion;
-				TRSData[i * num_poses + j].scaling = scale;
-			}
-		}
-
-		//If a model doesn't have an animation loaded, it will crash. We don't want that!
-		if (num_frames <= 0)
-		{
-			num_frames = 1;
-			TRSData.Resize(num_joints);
-
-			for (uint32_t j = 0; j < num_joints; j++)
-			{
-				FVector3 translate;
-				translate.X = Joints[j].Translate.X;
-				translate.Y = Joints[j].Translate.Y;
-				translate.Z = Joints[j].Translate.Z;
-				
-				FVector4 quaternion;
-				quaternion.X = Joints[j].Quaternion.X;
-				quaternion.Y = Joints[j].Quaternion.Y;
-				quaternion.Z = Joints[j].Quaternion.Z;
-				quaternion.W = Joints[j].Quaternion.W;
-				quaternion.MakeUnit();
-
-				FVector3 scale;
-				scale.X = Joints[j].Scale.X;
-				scale.Y = Joints[j].Scale.Y;
-				scale.Z = Joints[j].Scale.Z;
-
-				TRSData[j].translation = translate;
-				TRSData[j].rotation = quaternion;
-				TRSData[j].scaling = scale;
-			}
-		}
-
-		reader.SeekTo(ofs_bounds);
-		for (IQMBounds& bound : Bounds)
-		{
-			bound.BBMins[0] = reader.ReadFloat();
-			bound.BBMins[1] = reader.ReadFloat();
-			bound.BBMins[2] = reader.ReadFloat();
-			bound.BBMaxs[0] = reader.ReadFloat();
-			bound.BBMaxs[1] = reader.ReadFloat();
-			bound.BBMaxs[2] = reader.ReadFloat();
-			bound.XYRadius = reader.ReadFloat();
-			bound.Radius = reader.ReadFloat();
-		}
-
-		reader.SeekTo(ofs_vertexarrays);
-		for (IQMVertexArray& vertexArray : VertexArrays)
-		{
-			vertexArray.Type = (IQMVertexArrayType)reader.ReadUInt32();
-			vertexArray.Flags = reader.ReadUInt32();
-			vertexArray.Format = (IQMVertexArrayFormat)reader.ReadUInt32();
-			vertexArray.Size = reader.ReadUInt32();
-			vertexArray.Offset = reader.ReadUInt32();
-		}
-
-		return true;
 	}
-	catch (IQMReadErrorException)
+
 	{
-		return false;
+		size_t bounds_size = sizeof(iqm_bounds_t) * h.num_anims;
+
+		if((h.ofs_bounds + bounds_size) > length)
+		{
+			return false;
+		}
+
+		memcpy(Bounds.Data(), buffer + h.ofs_bounds, bounds_size);
+
+		size_t va_size = sizeof(iqm_vertex_array_t) * h.num_vertexarrays;
+
+		if((h.ofs_vertexarrays + va_size) > length)
+		{
+			return false;
+		}
+
+		memcpy(VertexArrays.Data(), buffer + h.ofs_vertexarrays, va_size);
 	}
+
+	TRSData.Resize(h.num_frames * h.num_poses);
+
+	uint16_t * framedata = (uint16_t *) (buffer + h.ofs_frames);
+
+	uint16_t * limit = (uint16_t *) (buffer + length);
+
+	for (uint32_t i = 0; i < h.num_frames; i++)
+	{
+		for (uint32_t j = 0; j < h.num_poses; j++)
+		{
+			const IQMPose& p = Poses[j];
+
+			FVector3 translate = *(FVector3*) &p.ChannelOffset[0];
+			FVector4 quaternion = *(FVector4*) &p.ChannelOffset[3];
+			FVector3 scale = *(FVector3*) &p.ChannelOffset[7];
+
+			if(framedata + mask_bits(p.ChannelMask) > limit)
+			{
+				return false;
+			}
+
+			if (p.ChannelMask & 0x01) translate.X += *(framedata++) * p.ChannelScale[0];
+			if (p.ChannelMask & 0x02) translate.Y += *(framedata++) * p.ChannelScale[1];
+			if (p.ChannelMask & 0x04) translate.Z += *(framedata++) * p.ChannelScale[2];
+				
+			if (p.ChannelMask & 0x08) quaternion.X += *(framedata++) * p.ChannelScale[3];
+			if (p.ChannelMask & 0x10) quaternion.Y += *(framedata++) * p.ChannelScale[4];
+			if (p.ChannelMask & 0x20) quaternion.Z += *(framedata++) * p.ChannelScale[5];
+			if (p.ChannelMask & 0x40) quaternion.W += *(framedata++) * p.ChannelScale[6];
+
+			if (p.ChannelMask & 0x080) scale.X += *(framedata++) * p.ChannelScale[7];
+			if (p.ChannelMask & 0x100) scale.Y += *(framedata++) * p.ChannelScale[8];
+			if (p.ChannelMask & 0x200) scale.Z += *(framedata++) * p.ChannelScale[9];
+
+			TRSData[i * h.num_poses + j].translation = translate;
+			TRSData[i * h.num_poses + j].rotation = quaternion.Unit();
+			TRSData[i * h.num_poses + j].scaling = scale;
+		}
+	}
+
+	//If a model doesn't have an animation loaded, it will crash. We don't want that!
+	if (h.num_frames <= 0)
+	{
+		h.num_frames = 1;
+		TRSData.Resize(h.num_joints);
+
+		for (uint32_t j = 0; j < h.num_joints; j++)
+		{
+			TRSData[j].translation = Joints[j].Translate;
+			TRSData[j].rotation = Joints[j].Quaternion.Unit();
+			TRSData[j].scaling = Joints[j].Scale;
+		}
+	}
+
+	uint64_t endTime = I_nsTime();
+
+	iqm_total_load_time_ns += endTime - loadStartTime;
+
+	return true;
+	
 }
 
 void IQMModel::LoadGeometry()
 {
-	try
-	{
-		FileData lumpdata = fileSystem.ReadFile(mLumpNum);
-		IQMFileReader reader(lumpdata.GetMem(), (int)lumpdata.GetSize());
+	FileData lumpdata = fileSystem.ReadFile(mLumpNum);
+	char * data = (char *) lumpdata.GetMem();
+	size_t len = lumpdata.GetSize();
 
-		Vertices.Resize(NumVertices);
-		for (IQMVertexArray& vertexArray : VertexArrays)
+	Vertices.Resize(NumVertices);
+	for (IQMVertexArray& vertexArray : VertexArrays)
+	{
+		if (vertexArray.Type == IQM_POSITION)
 		{
-			reader.SeekTo(vertexArray.Offset);
-			if (vertexArray.Type == IQM_POSITION)
+			float lu = 0.0f, lv = 0.0f, lindex = -1.0f;
+			if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 3)
 			{
-				LoadPosition(reader, vertexArray);
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(float) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_POSITION vertex array is bigger than the model file");
+				}
+
+				float * arr = (float *)(data + vertexArray.Offset);
+
+				for (FModelVertex& v : Vertices)
+				{
+					v.x = *(arr++);
+					v.z = *(arr++);
+					v.y = *(arr++);
+
+					v.lu = lu;
+					v.lv = lv;
+					v.lindex = lindex;
+				}
 			}
-			else if (vertexArray.Type == IQM_TEXCOORD)
+			else
 			{
-				LoadTexcoord(reader, vertexArray);
+				I_FatalError("Unsupported IQM_POSITION vertex format");
 			}
-			else if (vertexArray.Type == IQM_NORMAL)
+		}
+		else if (vertexArray.Type == IQM_TEXCOORD)
+		{
+			if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 2)
 			{
-				LoadNormal(reader, vertexArray);
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(float) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_TEXCOORD vertex array is bigger than the model file");
+				}
+
+				float * arr = (float *)(data + vertexArray.Offset);
+
+				for (FModelVertex& v : Vertices)
+				{
+					v.u = *(arr++);
+					v.v = *(arr++);
+				}
 			}
-			else if (vertexArray.Type == IQM_BLENDINDEXES)
+			else
 			{
-				LoadBlendIndexes(reader, vertexArray);
+				I_FatalError("Unsupported IQM_TEXCOORD vertex format");
 			}
-			else if (vertexArray.Type == IQM_BLENDWEIGHTS)
+		}
+		else if (vertexArray.Type == IQM_NORMAL)
+		{
+			if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 3)
 			{
-				LoadBlendWeights(reader, vertexArray);
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(float) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_NORMAL vertex array is bigger than the model file");
+				}
+
+				float * arr = (float *)(data + vertexArray.Offset);
+
+				for (FModelVertex& v : Vertices)
+				{
+					v.SetNormal(arr[0], arr[1], arr[2]);
+
+					arr += 3;
+				}
+			}
+			else
+			{
+				I_FatalError("Unsupported IQM_NORMAL vertex format");
 			}
 		}
-	}
-	catch (IQMReadErrorException)
-	{
-	}
-}
-
-void IQMModel::LoadPosition(IQMFileReader& reader, const IQMVertexArray& vertexArray)
-{
-	float lu = 0.0f, lv = 0.0f, lindex = -1.0f;
-	if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 3)
-	{
-		for (FModelVertex& v : Vertices)
+		else if (vertexArray.Type == IQM_BLENDINDEXES)
 		{
-			v.x = reader.ReadFloat();
-			v.z = reader.ReadFloat();
-			v.y = reader.ReadFloat();
+			if (vertexArray.Format == IQM_UBYTE && vertexArray.Size == 4)
+			{
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(uint8_t) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_BLENDINDEXES vertex array is bigger than the model file");
+				}
 
-			v.lu = lu;
-			v.lv = lv;
-			v.lindex = lindex;
-		}
-	}
-	else
-	{
-		I_FatalError("Unsupported IQM_POSITION vertex format");
-	}
-}
+				uint8_t * arr = (uint8_t *)(data + vertexArray.Offset);
 
-void IQMModel::LoadTexcoord(IQMFileReader& reader, const IQMVertexArray& vertexArray)
-{
-	if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 2)
-	{
-		for (FModelVertex& v : Vertices)
-		{
-			v.u = reader.ReadFloat();
-			v.v = reader.ReadFloat();
-		}
-	}
-	else
-	{
-		I_FatalError("Unsupported IQM_TEXCOORD vertex format");
-	}
-}
+				for (FModelVertex& v : Vertices)
+				{
+					v.SetBoneSelector(arr[0], arr[1], arr[2], arr[3]);
 
-void IQMModel::LoadNormal(IQMFileReader& reader, const IQMVertexArray& vertexArray)
-{
-	if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 3)
-	{
-		for (FModelVertex& v : Vertices)
-		{
-			float x = reader.ReadFloat();
-			float y = reader.ReadFloat();
-			float z = reader.ReadFloat();
+					arr += 4;
+				}
+			}
+			else if (vertexArray.Format == IQM_INT && vertexArray.Size == 4)
+			{
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(int32_t) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_BLENDINDEXES vertex array is bigger than the model file");
+				}
 
-			v.SetNormal(x, z, y);
-		}
-	}
-	else
-	{
-		I_FatalError("Unsupported IQM_NORMAL vertex format");
-	}
-}
+				int32_t * arr = (int32_t *)(data + vertexArray.Offset);
 
-void IQMModel::LoadBlendIndexes(IQMFileReader& reader, const IQMVertexArray& vertexArray)
-{
-	if (vertexArray.Format == IQM_UBYTE && vertexArray.Size == 4)
-	{
-		for (FModelVertex& v : Vertices)
-		{
-			int x = reader.ReadUByte();
-			int y = reader.ReadUByte();
-			int z = reader.ReadUByte();
-			int w = reader.ReadUByte();
-			v.SetBoneSelector(x, y, z, w);
-		}
-	}
-	else if (vertexArray.Format == IQM_INT && vertexArray.Size == 4)
-	{
-		for (FModelVertex& v : Vertices)
-		{
-			int x = reader.ReadInt32();
-			int y = reader.ReadInt32();
-			int z = reader.ReadInt32();
-			int w = reader.ReadInt32();
-			v.SetBoneSelector(x, y, z, w);
-		}
-	}
-	else
-	{
-		I_FatalError("Unsupported IQM_BLENDINDEXES vertex format");
-	}
-}
+				for (FModelVertex& v : Vertices)
+				{
+					v.SetBoneSelector(arr[0], arr[1], arr[2], arr[3]);
 
-void IQMModel::LoadBlendWeights(IQMFileReader& reader, const IQMVertexArray& vertexArray)
-{
-	if (vertexArray.Format == IQM_UBYTE && vertexArray.Size == 4)
-	{
-		for (FModelVertex& v : Vertices)
-		{
-			int x = reader.ReadUByte();
-			int y = reader.ReadUByte();
-			int z = reader.ReadUByte();
-			int w = reader.ReadUByte();
-			v.SetBoneWeight(x, y, z, w);
+					arr += 4;
+				}
+			}
+			else
+			{
+				I_FatalError("Unsupported IQM_BLENDINDEXES vertex format");
+			}
 		}
-	}
-	else if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 4)
-	{
-		for (FModelVertex& v : Vertices)
+		else if (vertexArray.Type == IQM_BLENDWEIGHTS)
 		{
-			uint8_t x = (int)clamp(reader.ReadFloat() * 255.0f, 0.0f, 255.0f);
-			uint8_t y = (int)clamp(reader.ReadFloat() * 255.0f, 0.0f, 255.0f);
-			uint8_t z = (int)clamp(reader.ReadFloat() * 255.0f, 0.0f, 255.0f);
-			uint8_t w = (int)clamp(reader.ReadFloat() * 255.0f, 0.0f, 255.0f);
-			v.SetBoneWeight(x, y, z, w);
+			if (vertexArray.Format == IQM_UBYTE && vertexArray.Size == 4)
+			{
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(uint8_t) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_BLENDWEIGHTS vertex array is bigger than the model file");
+				}
+
+				uint8_t * arr = (uint8_t *)(data + vertexArray.Offset);
+
+				for (FModelVertex& v : Vertices)
+				{
+					v.SetBoneWeight(arr[0], arr[1], arr[2], arr[3]);
+
+					arr += 4;
+				}
+			}
+			else if (vertexArray.Format == IQM_FLOAT && vertexArray.Size == 4)
+			{
+				if((vertexArray.Offset + (vertexArray.Size * sizeof(float) * NumVertices)) > len)
+				{
+					I_FatalError("IQM_BLENDWEIGHTS vertex array is bigger than the model file");
+				}
+
+				float * arr = (float *)(data + vertexArray.Offset);
+
+				for (FModelVertex& v : Vertices)
+				{
+					v.SetBoneWeight(
+						(int)clamp(arr[0] * 255.0f, 0.0f, 255.0f),
+						(int)clamp(arr[1] * 255.0f, 0.0f, 255.0f),
+						(int)clamp(arr[2] * 255.0f, 0.0f, 255.0f),
+						(int)clamp(arr[3] * 255.0f, 0.0f, 255.0f));
+
+					arr += 4;
+				}
+			}
+			else
+			{
+				I_FatalError("Unsupported IQM_BLENDWEIGHTS vertex format");
+			}
 		}
-	}
-	else
-	{
-		I_FatalError("Unsupported IQM_BLENDWEIGHTS vertex format");
 	}
 }
 
