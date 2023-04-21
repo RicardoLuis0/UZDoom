@@ -2399,8 +2399,16 @@ void ZCCCompiler::CompileFunction(ZCC_StructWork *c, ZCC_FuncDeclarator *f, bool
 		}
 		if (fc > 1)
 		{
-			Error(f, "Invalid combination of scope qualifiers %s on function %s", FlagsToString(excludeflags).GetChars(), FName(f->Name).GetChars());
-			varflags &= ~(VARF_UI | VARF_Play); // make plain data
+			if((f->Flags & (ZCC_Native | ZCC_UIFlag | ZCC_Play | ZCC_ClearScope | ZCC_VirtualScope)) != (ZCC_Native | ZCC_UIFlag | ZCC_Play))
+			{ // allow 'native ui play' functions
+				Error(f, "Invalid combination of scope qualifiers %s on function %s", FlagsToString(excludeflags).GetChars(), FName(f->Name).GetChars());
+				varflags &= ~(VARF_UI | VARF_Play); // make plain data
+			}
+			else
+			{
+				//'native play ui'
+				varflags |= (VARF_UI | VARF_Play);
+			}
 		}
 
 		if (f->Flags & ZCC_Native)

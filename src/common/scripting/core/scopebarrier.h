@@ -32,7 +32,8 @@ struct FScopeBarrier
 		Side_UI = 1,
 		Side_Play = 2,
 		Side_Virtual = 3, // do NOT change the value
-		Side_Clear = 4
+		Side_Clear = 4,
+		Side_NativePlayUI = 5
 	};
 	int sidefrom;
 	int sidelast;

@@ -40,6 +40,8 @@
 // Note: the same object can't be both UI and Play. This is checked explicitly in the field construction and will cause esoteric errors here if found.
 int FScopeBarrier::SideFromFlags(int flags)
 {
+	if((flags & (VARF_UI | VARF_Play | VARF_VirtualScope | VARF_ClearScope | VARF_Native)) == (VARF_UI | VARF_Play | VARF_Native))
+		return Side_NativePlayUI;
 	if (flags & VARF_UI)
 		return Side_UI;
 	if (flags & VARF_Play)
@@ -99,6 +101,8 @@ const char* FScopeBarrier::StringFromSide(int side)
 	{
 	case Side_PlainData:
 		return "data";
+	case Side_NativePlayUI:
+		return "(play, ui)";
 	case Side_UI:
 		return "ui";
 	case Side_Play:
@@ -160,8 +164,9 @@ void FScopeBarrier::AddFlags(int flags1, int flags2, const char* name)
 
 	// we aren't interested in any other flags
 	//  - update: including VARF_VirtualScope. inside the function itself, we treat it as if it's PlainData.
+	//  - update2: include VARF_Native for Side_NativePlayUI
 	flags1 &= VARF_UI | VARF_Play;
-	flags2 &= VARF_UI | VARF_Play | VARF_ReadOnly;
+	flags2 &= VARF_UI | VARF_Play | VARF_ReadOnly | VARF_Native;
 
 	if (sidefrom < 0) sidefrom = SideFromFlags(flags1);
 	if (sidelast < 0) sidelast = sidefrom;
@@ -201,7 +206,7 @@ void FScopeBarrier::AddFlags(int flags1, int flags2, const char* name)
 		if (name) writeerror.Format("Can't write %s field %s from %s context", StringFromSide(sideto), name, StringFromSide(sidefrom));
 	}
 
-	if (callable && (sidefrom != sideto) && !(flags2 & VARF_ReadOnly)) // readonly on methods is used for plain data stuff that can be called from ui/play context.
+	if (callable && (sidefrom != sideto) && !(flags2 & VARF_ReadOnly) && !(sideto == Side_NativePlayUI && (sidefrom == Side_UI || sidefrom == Side_Play))) // readonly on methods is used for plain data stuff that can be called from ui/play context.
 	{
 		callable = false;
 		if (name) callerror.Format("Can't call %s function %s from %s context", StringFromSide(sideto), name, StringFromSide(sidefrom));
