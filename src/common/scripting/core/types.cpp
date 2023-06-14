@@ -2239,7 +2239,7 @@ enum OverrideFunctionArgType {
 	OFN_ARG_KEY_VAL,
 };
 
-template<class MT, OverrideFunctionRetType RetType, OverrideFunctionArgType ArgType >
+template<OverrideFunctionRetType RetType, OverrideFunctionArgType ArgType, int ExtraFlags = 0, class MT>
 void CreateOverrideFunction(MT *self, FName name)
 {
 	auto Fn = Create<PFunction>(self->BackingType, name);
@@ -2294,7 +2294,7 @@ void CreateOverrideFunction(MT *self, FName name)
 		argnames.Push(NAME_Value);
 	}
 
-	Fn->AddVariant(NewPrototype(ret, args), argflags, argnames, *NativeFn->VMPointer, VARF_Method | VARF_Native,SUF_ACTOR | SUF_OVERLAY | SUF_WEAPON | SUF_ITEM);
+	Fn->AddVariant(NewPrototype(ret, args), argflags, argnames, *NativeFn->VMPointer, VARF_Method | VARF_Native | ExtraFlags, SUF_ACTOR | SUF_OVERLAY | SUF_WEAPON | SUF_ITEM);
 	self->FnOverrides.Insert(name, Fn);
 }
 
@@ -2304,11 +2304,11 @@ PMap::PMap(PType *keytype, PType *valtype, PStruct *backing, int backing_class)
 	mDescriptiveName.Format("Map<%s, %s>", keytype->DescriptiveName(), valtype->DescriptiveName());
 	Size = sizeof(ZSFMap);
 	Align = alignof(ZSFMap);
-	CreateOverrideFunction<PMap, OFN_RET_VAL, OFN_ARG_KEY>(this, NAME_Get);
-	CreateOverrideFunction<PMap, OFN_RET_BOOL, OFN_ARG_KEY>(this, NAME_CheckKey);
-	CreateOverrideFunction<PMap, OFN_RET_VOID, OFN_ARG_KEY_VAL>(this, NAME_Insert);
-	CreateOverrideFunction<PMap, OFN_RET_VOID, OFN_ARG_KEY>(this, NAME_InsertNew);
-	CreateOverrideFunction<PMap, OFN_RET_VOID, OFN_ARG_KEY>(this, NAME_Remove);
+	CreateOverrideFunction< OFN_RET_VAL      , OFN_ARG_KEY     > (this, NAME_Get);
+	CreateOverrideFunction< OFN_RET_BOOL     , OFN_ARG_KEY     , VARF_ReadOnly> (this, NAME_CheckKey);
+	CreateOverrideFunction< OFN_RET_VOID     , OFN_ARG_KEY_VAL > (this, NAME_Insert);
+	CreateOverrideFunction< OFN_RET_VOID     , OFN_ARG_KEY     > (this, NAME_InsertNew);
+	CreateOverrideFunction< OFN_RET_VOID     , OFN_ARG_KEY     > (this, NAME_Remove);
 }
 
 //==========================================================================
@@ -2770,9 +2770,9 @@ PMapIterator::PMapIterator(PType *keytype, PType *valtype, PStruct *backing, int
 	mDescriptiveName.Format("MapIterator<%s, %s>", keytype->DescriptiveName(), valtype->DescriptiveName());
 	Size = sizeof(ZSFMap);
 	Align = alignof(ZSFMap);
-	CreateOverrideFunction<PMapIterator, OFN_RET_KEY, OFN_ARG_VOID>(this, NAME_GetKey);
-	CreateOverrideFunction<PMapIterator, OFN_RET_VAL, OFN_ARG_VOID>(this, NAME_GetValue);
-	CreateOverrideFunction<PMapIterator, OFN_RET_VOID, OFN_ARG_VAL>(this, NAME_SetValue);
+	CreateOverrideFunction<OFN_RET_KEY, OFN_ARG_VOID>(this, NAME_GetKey);
+	CreateOverrideFunction<OFN_RET_VAL, OFN_ARG_VOID>(this, NAME_GetValue);
+	CreateOverrideFunction<OFN_RET_VOID, OFN_ARG_VAL>(this, NAME_SetValue);
 }
 
 //==========================================================================
