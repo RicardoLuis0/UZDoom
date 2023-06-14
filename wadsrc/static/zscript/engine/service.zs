@@ -56,7 +56,7 @@ class Service abstract
 	}
     
     static Service Find(class<Service> serviceName){
-        return AllServices.GetIfExists(serviceName.GetClassName());
+        return AllServices.Get(serviceName.GetClassName());
     }
 }
 
