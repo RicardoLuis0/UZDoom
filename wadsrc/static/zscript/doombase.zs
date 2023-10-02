@@ -785,3 +785,86 @@ struct FRailParams
 	native int SpiralOffset;
 	native int limit;
 };	// [RH] Shoot a railgun
+
+class Interpolation native sealed(SectorPlaneInterpolation, SectorScrollInterpolation, WallScrollInterpolation, PolyobjInterpolation) abstract version("4.12")
+{
+	private native Interpolation Next;
+	private native Interpolation Prev;
+	private native LevelLocals Level;
+	protected native int refcount;
+
+	native virtual void UnlinkFromMap();
+	native virtual void UpdateInterpolation();
+	native virtual void Restore();
+	native virtual void Interpolate(double smoothratio);
+}
+
+class SectorPlaneInterpolation : Interpolation native final version("4.12")
+{
+	native Sector _sector;
+	native double oldheight;
+	native double oldtexz;
+	native double bakheight;
+	native double baktexz;
+	native bool ceiling;
+	native Array<Interpolation> attached;
+
+	native void Init(Sector sec, bool plane, bool attach);
+
+	native override void UnlinkFromMap();
+	native override void UpdateInterpolation();
+	native override void Restore();
+	native override void Interpolate(double smoothratio);
+}
+
+class SectorScrollInterpolation : Interpolation native final version("4.12")
+{
+	native Sector _sector;
+	native double oldx;
+	native double oldy;
+	native double bakx;
+	native double baky;
+	native bool ceiling;
+
+	native void Init(Sector sec, bool plane);
+
+	native override void UnlinkFromMap();
+	native override void UpdateInterpolation();
+	native override void Restore();
+	native override void Interpolate(double smoothratio);
+}
+
+class WallScrollInterpolation : Interpolation native final version("4.12")
+{
+	native Side _side;
+	native int part;
+	native double oldx;
+	native double oldy;
+	native double bakx;
+	native double baky;
+
+	native void Init(Side _side, int part);
+
+	native override void UnlinkFromMap();
+	native override void UpdateInterpolation();
+	native override void Restore();
+	native override void Interpolate(double smoothratio);
+}
+
+class PolyobjInterpolation : Interpolation native final version("4.12")
+{
+	native voidptr poly;
+	native Array<double> oldverts;
+	native Array<double> bakverts;
+	native double oldcx;
+	native double oldcy;
+	native double bakcx;
+	native double bakcy;
+
+	native void Init(voidptr poly);
+
+	native override void UnlinkFromMap();
+	native override void UpdateInterpolation();
+	native override void Restore();
+	native override void Interpolate(double smoothratio);
+}

@@ -41,10 +41,123 @@
 #include "serializer_doom.h"
 #include "serialize_obj.h"
 #include "g_levellocals.h"
+#include "vm.h"
 
 //==========================================================================
 //
+// Exports
 //
+//==========================================================================
+
+DEFINE_FIELD(DInterpolation, Next);
+DEFINE_FIELD(DInterpolation, Prev);
+DEFINE_FIELD(DInterpolation, Level);
+DEFINE_FIELD(DInterpolation, refcount);
+
+void NativeUnlinkFromMap(DInterpolation * self)
+{
+	self->UnlinkFromMap();
+}
+
+void NativeUpdateInterpolation(DInterpolation * self)
+{
+	self->UpdateInterpolation();
+}
+
+void NativeRestore(DInterpolation * self)
+{
+	self->Restore();
+}
+
+void NativeInterpolate(DInterpolation * self, double smoothratio)
+{
+	self->Interpolate(smoothratio);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DInterpolation, UnlinkFromMap, NativeUnlinkFromMap)
+{
+	PARAM_SELF_PROLOGUE(DInterpolation);
+	self->UnlinkFromMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DInterpolation, UpdateInterpolation, NativeUpdateInterpolation)
+{
+	PARAM_SELF_PROLOGUE(DInterpolation);
+	self->UpdateInterpolation();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DInterpolation, Restore, NativeRestore)
+{
+	PARAM_SELF_PROLOGUE(DInterpolation);
+	self->Restore();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DInterpolation, Interpolate, NativeInterpolate)
+{
+	PARAM_SELF_PROLOGUE(DInterpolation);
+	PARAM_FLOAT(smoothratio);
+	self->Interpolate(smoothratio);
+	return 0;
+}
+
+void DInterpolation::CallUnlinkFromMap()
+{
+	IFVIRTUAL(DInterpolation, UnlinkFromMap)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMCall(func, params, 1, nullptr, 0);
+	}
+	else
+	{
+		UnlinkFromMap();
+	}
+}
+
+void DInterpolation::CallUpdateInterpolation()
+{
+	IFVIRTUAL(DInterpolation, UpdateInterpolation)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMCall(func, params, 1, nullptr, 0);
+	}
+	else
+	{
+		UpdateInterpolation();
+	}
+}
+
+void DInterpolation::CallRestore()
+{
+	IFVIRTUAL(DInterpolation, Restore)
+	{
+		VMValue params[1] = { (DObject*)this };
+		VMCall(func, params, 1, nullptr, 0);
+	}
+	else
+	{
+		Restore();
+	}
+}
+
+void DInterpolation::CallInterpolate(double smoothratio)
+{
+	IFVIRTUAL(DInterpolation, Interpolate)
+	{
+		VMValue params[2] = { (DObject*)this, smoothratio };
+		VMCall(func, params, 2, nullptr, 0);
+	}
+	else
+	{
+		Interpolate(smoothratio);
+	}
+}
+
+//==========================================================================
+//
+// DSectorPlaneInterpolation
 //
 //==========================================================================
 
@@ -52,29 +165,82 @@ class DSectorPlaneInterpolation : public DInterpolation
 {
 	DECLARE_CLASS(DSectorPlaneInterpolation, DInterpolation)
 
+public:
+
 	sector_t *sector;
 	double oldheight, oldtexz;
 	double bakheight, baktexz;
 	bool ceiling;
 	TArray<DInterpolation *> attached;
 
-
-public:
+	void Init(sector_t *sector, bool plane, bool attach);
 
 	DSectorPlaneInterpolation() {}
-	DSectorPlaneInterpolation(sector_t *sector, bool plane, bool attach);
-	void UnlinkFromMap() override;
-	void UpdateInterpolation();
-	void Restore();
-	void Interpolate(double smoothratio);
-	
-	virtual void Serialize(FSerializer &arc);
-	size_t PropagateMark();
+	DSectorPlaneInterpolation(sector_t *sector, bool plane, bool attach) { Init(sector, plane, attach); }
+
+	virtual void UnlinkFromMap() override;
+	virtual void UpdateInterpolation() override;
+	virtual void Restore() override;
+	virtual void Interpolate(double smoothratio) override;
+
+	virtual void Serialize(FSerializer &arc) override;
 };
+
+DEFINE_FIELD_NAMED(DSectorPlaneInterpolation, sector, _sector);
+DEFINE_FIELD(DSectorPlaneInterpolation, oldheight);
+DEFINE_FIELD(DSectorPlaneInterpolation, oldtexz);
+DEFINE_FIELD(DSectorPlaneInterpolation, bakheight);
+DEFINE_FIELD(DSectorPlaneInterpolation, baktexz);
+DEFINE_FIELD(DSectorPlaneInterpolation, ceiling);
+DEFINE_FIELD(DSectorPlaneInterpolation, attached);
+
+void NativeInitSectorPlane(DSectorPlaneInterpolation * self, sector_t *sector, bool plane, bool attach)
+{
+	self->Init(sector, plane, attach);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorPlaneInterpolation, Init, NativeInitSectorPlane)
+{
+	PARAM_SELF_PROLOGUE(DSectorPlaneInterpolation);
+	PARAM_POINTER(sector, sector_t);
+	PARAM_BOOL(plane);
+	PARAM_BOOL(attach);
+	self->Init(sector, plane, attach);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorPlaneInterpolation, UnlinkFromMap, NativeUnlinkFromMap)
+{
+	PARAM_SELF_PROLOGUE(DSectorPlaneInterpolation);
+	self->UnlinkFromMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorPlaneInterpolation, UpdateInterpolation, NativeUpdateInterpolation)
+{
+	PARAM_SELF_PROLOGUE(DSectorPlaneInterpolation);
+	self->UpdateInterpolation();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorPlaneInterpolation, Restore, NativeRestore)
+{
+	PARAM_SELF_PROLOGUE(DSectorPlaneInterpolation);
+	self->Restore();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorPlaneInterpolation, Interpolate, NativeInterpolate)
+{
+	PARAM_SELF_PROLOGUE(DSectorPlaneInterpolation);
+	PARAM_FLOAT(smoothratio);
+	self->Interpolate(smoothratio);
+	return 0;
+}
 
 //==========================================================================
 //
-//
+// DSectorScrollInterpolation
 //
 //==========================================================================
 
@@ -82,78 +248,230 @@ class DSectorScrollInterpolation : public DInterpolation
 {
 	DECLARE_CLASS(DSectorScrollInterpolation, DInterpolation)
 
+public:
 	sector_t *sector;
 	double oldx, oldy;
 	double bakx, baky;
 	bool ceiling;
 
-public:
+	void Init(sector_t *sector, bool plane);
 
 	DSectorScrollInterpolation() {}
-	DSectorScrollInterpolation(sector_t *sector, bool plane);
-	void UnlinkFromMap() override;
-	void UpdateInterpolation();
-	void Restore();
-	void Interpolate(double smoothratio);
-	
-	virtual void Serialize(FSerializer &arc);
+	DSectorScrollInterpolation(sector_t *sector, bool plane) { Init(sector, plane); }
+
+	virtual void UnlinkFromMap() override;
+	virtual void UpdateInterpolation() override;
+	virtual void Restore() override;
+	virtual void Interpolate(double smoothratio) override;
+
+	virtual void Serialize(FSerializer &arc) override;
 };
 
+DEFINE_FIELD_NAMED(DSectorScrollInterpolation, sector, _sector);
+DEFINE_FIELD(DSectorScrollInterpolation, oldx);
+DEFINE_FIELD(DSectorScrollInterpolation, oldy);
+DEFINE_FIELD(DSectorScrollInterpolation, bakx);
+DEFINE_FIELD(DSectorScrollInterpolation, baky);
+DEFINE_FIELD(DSectorScrollInterpolation, ceiling);
+
+void NativeInitSectorScroll(DSectorScrollInterpolation * self, sector_t *sector, bool plane)
+{
+	self->Init(sector, plane);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorScrollInterpolation, Init, NativeInitSectorScroll)
+{
+	PARAM_SELF_PROLOGUE(DSectorScrollInterpolation);
+	PARAM_POINTER(sector, sector_t);
+	PARAM_BOOL(plane);
+	self->Init(sector, plane);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorScrollInterpolation, UnlinkFromMap, NativeUnlinkFromMap)
+{
+	PARAM_SELF_PROLOGUE(DSectorScrollInterpolation);
+	self->UnlinkFromMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorScrollInterpolation, UpdateInterpolation, NativeUpdateInterpolation)
+{
+	PARAM_SELF_PROLOGUE(DSectorScrollInterpolation);
+	self->UpdateInterpolation();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorScrollInterpolation, Restore, NativeRestore)
+{
+	PARAM_SELF_PROLOGUE(DSectorScrollInterpolation);
+	self->Restore();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DSectorScrollInterpolation, Interpolate, NativeInterpolate)
+{
+	PARAM_SELF_PROLOGUE(DSectorScrollInterpolation);
+	PARAM_FLOAT(smoothratio);
+	self->Interpolate(smoothratio);
+	return 0;
+}
 
 //==========================================================================
 //
-//
+// DWallScrollInterpolation
 //
 //==========================================================================
 
 class DWallScrollInterpolation : public DInterpolation
 {
 	DECLARE_CLASS(DWallScrollInterpolation, DInterpolation)
-
+public:
 	side_t *side;
 	int part;
 	double oldx, oldy;
 	double bakx, baky;
 
-public:
+	void Init(side_t *side, int part);
 
 	DWallScrollInterpolation() {}
-	DWallScrollInterpolation(side_t *side, int part);
-	void UnlinkFromMap() override;
-	void UpdateInterpolation();
-	void Restore();
-	void Interpolate(double smoothratio);
-	
-	virtual void Serialize(FSerializer &arc);
+	DWallScrollInterpolation(side_t *side, int part) { Init(side, part); }
+
+	virtual void UnlinkFromMap() override;
+	virtual void UpdateInterpolation() override;
+	virtual void Restore() override;
+	virtual void Interpolate(double smoothratio) override;
+
+	virtual void Serialize(FSerializer &arc) override;
 };
+
+DEFINE_FIELD_NAMED(DWallScrollInterpolation, side, _side);
+DEFINE_FIELD(DWallScrollInterpolation, part);
+DEFINE_FIELD(DWallScrollInterpolation, oldx);
+DEFINE_FIELD(DWallScrollInterpolation, oldy);
+DEFINE_FIELD(DWallScrollInterpolation, bakx);
+DEFINE_FIELD(DWallScrollInterpolation, baky);
+
+void NativeInitWallScroll(DWallScrollInterpolation * self, side_t *side, int part)
+{
+	self->Init(side, part);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DWallScrollInterpolation, Init, NativeInitWallScroll)
+{
+	PARAM_SELF_PROLOGUE(DWallScrollInterpolation);
+	PARAM_POINTER(side, side_t);
+	PARAM_INT(part);
+	self->Init(side, part);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DWallScrollInterpolation, UnlinkFromMap, NativeUnlinkFromMap)
+{
+	PARAM_SELF_PROLOGUE(DWallScrollInterpolation);
+	self->UnlinkFromMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DWallScrollInterpolation, UpdateInterpolation, NativeUpdateInterpolation)
+{
+	PARAM_SELF_PROLOGUE(DWallScrollInterpolation);
+	self->UpdateInterpolation();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DWallScrollInterpolation, Restore, NativeRestore)
+{
+	PARAM_SELF_PROLOGUE(DWallScrollInterpolation);
+	self->Restore();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DWallScrollInterpolation, Interpolate, NativeInterpolate)
+{
+	PARAM_SELF_PROLOGUE(DWallScrollInterpolation);
+	PARAM_FLOAT(smoothratio);
+	self->Interpolate(smoothratio);
+	return 0;
+}
 
 //==========================================================================
 //
-//
+// DPolyobjInterpolation
 //
 //==========================================================================
 
 class DPolyobjInterpolation : public DInterpolation
 {
 	DECLARE_CLASS(DPolyobjInterpolation, DInterpolation)
-
+public:
 	FPolyObj *poly;
 	TArray<double> oldverts, bakverts;
 	double oldcx, oldcy;
 	double bakcx, bakcy;
 
-public:
+	void Init(FPolyObj *poly);
 
 	DPolyobjInterpolation() {}
-	DPolyobjInterpolation(FPolyObj *poly);
-	void UnlinkFromMap() override;
-	void UpdateInterpolation();
-	void Restore();
-	void Interpolate(double smoothratio);
-	
-	virtual void Serialize(FSerializer &arc);
+	DPolyobjInterpolation(FPolyObj *poly) { Init(poly); }
+
+	virtual void UnlinkFromMap() override;
+	virtual void UpdateInterpolation() override;
+	virtual void Restore() override;
+	virtual void Interpolate(double smoothratio) override;
+
+	virtual void Serialize(FSerializer &arc) override;
 };
 
+DEFINE_FIELD(DPolyobjInterpolation, poly);
+DEFINE_FIELD(DPolyobjInterpolation, oldverts);
+DEFINE_FIELD(DPolyobjInterpolation, bakverts);
+DEFINE_FIELD(DPolyobjInterpolation, oldcx);
+DEFINE_FIELD(DPolyobjInterpolation, oldcy);
+DEFINE_FIELD(DPolyobjInterpolation, bakcx);
+DEFINE_FIELD(DPolyobjInterpolation, bakcy);
+
+void NativeInitPolyobj(DPolyobjInterpolation * self, FPolyObj *poly)
+{
+	self->Init(poly);
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DPolyobjInterpolation, Init, NativeInitPolyobj)
+{
+	PARAM_SELF_PROLOGUE(DPolyobjInterpolation);
+	PARAM_POINTER(poly, FPolyObj);
+	self->Init(poly);
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DPolyobjInterpolation, UnlinkFromMap, NativeUnlinkFromMap)
+{
+	PARAM_SELF_PROLOGUE(DPolyobjInterpolation);
+	self->UnlinkFromMap();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DPolyobjInterpolation, UpdateInterpolation, NativeUpdateInterpolation)
+{
+	PARAM_SELF_PROLOGUE(DPolyobjInterpolation);
+	self->UpdateInterpolation();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DPolyobjInterpolation, Restore, NativeRestore)
+{
+	PARAM_SELF_PROLOGUE(DPolyobjInterpolation);
+	self->Restore();
+	return 0;
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(DPolyobjInterpolation, Interpolate, NativeInterpolate)
+{
+	PARAM_SELF_PROLOGUE(DPolyobjInterpolation);
+	PARAM_FLOAT(smoothratio);
+	self->Interpolate(smoothratio);
+	return 0;
+}
 
 //==========================================================================
 //
@@ -199,7 +517,7 @@ void FInterpolator::UpdateInterpolations()
 {
 	for (DInterpolation *probe = Head; probe != nullptr; probe = probe->Next)
 	{
-		probe->UpdateInterpolation ();
+		probe->CallUpdateInterpolation();
 	}
 }
 
@@ -259,7 +577,7 @@ void FInterpolator::DoInterpolations(double smoothratio)
 	while (probe != nullptr)
 	{
 		DInterpolation *next = probe->Next;
-		probe->Interpolate(smoothratio);
+		probe->CallInterpolate(smoothratio);
 		probe = next;
 	}
 }
@@ -277,7 +595,7 @@ void FInterpolator::RestoreInterpolations()
 		didInterp = false;
 		for (DInterpolation *probe = Head; probe != nullptr; probe = probe->Next)
 		{
-			probe->Restore();
+			probe->CallRestore();
 		}
 	}
 }
@@ -297,7 +615,7 @@ void FInterpolator::ClearInterpolations()
 	{
 		DInterpolation *next = probe->Next;
 		probe->Next = probe->Prev = nullptr;
-		probe->UnlinkFromMap();
+		probe->CallUnlinkFromMap();
 		probe->Destroy();
 		probe = next;
 	}
@@ -313,12 +631,6 @@ FSerializer &Serialize(FSerializer &arc, const char *key, FInterpolator &rs, FIn
 	}
 	return arc;
 }
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
 
 //==========================================================================
 //
@@ -375,25 +687,18 @@ void DInterpolation::Serialize(FSerializer &arc)
 		("prev", Prev)
 		("level", Level);
 }
-
 //==========================================================================
 //
 //
 //
 //==========================================================================
 
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-DSectorPlaneInterpolation::DSectorPlaneInterpolation(sector_t *_sector, bool _plane, bool attach)
-: DInterpolation(_sector->Level)
+void DSectorPlaneInterpolation::Init(sector_t *_sector, bool _plane, bool attach)
 {
+	Level = _sector->Level;
 	sector = _sector;
 	ceiling = _plane;
-	UpdateInterpolation ();
+	UpdateInterpolation();
 
 	if (attach)
 	{
@@ -527,38 +832,15 @@ void DSectorPlaneInterpolation::Serialize(FSerializer &arc)
 		("oldtexz", oldtexz)
 		("attached", attached);
 }
-
-
 //==========================================================================
 //
 //
 //
 //==========================================================================
 
-size_t DSectorPlaneInterpolation::PropagateMark()
+void DSectorScrollInterpolation::Init(sector_t *_sector, bool _plane)
 {
-	for(unsigned i=0; i<attached.Size(); i++)
-	{
-		GC::Mark(attached[i]);
-	}
-	return Super::PropagateMark();
-}
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-DSectorScrollInterpolation::DSectorScrollInterpolation(sector_t *_sector, bool _plane)
-: DInterpolation(_sector->Level)
-{
+	Level = _sector->Level;
 	sector = _sector;
 	ceiling = _plane;
 	UpdateInterpolation ();
@@ -649,23 +931,15 @@ void DSectorScrollInterpolation::Serialize(FSerializer &arc)
 		("oldx", oldx)
 		("oldy", oldy);
 }
-
-
 //==========================================================================
 //
 //
 //
 //==========================================================================
 
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-DWallScrollInterpolation::DWallScrollInterpolation(side_t *_side, int _part)
-: DInterpolation(_side->GetLevel())
+void DWallScrollInterpolation::Init(side_t *_side, int _part)
 {
+	Level = _side->GetLevel();
 	side = _side;
 	part = _part;
 	UpdateInterpolation ();
@@ -749,22 +1023,15 @@ void DWallScrollInterpolation::Serialize(FSerializer &arc)
 		("oldx", oldx)
 		("oldy", oldy);
 }
-
 //==========================================================================
 //
 //
 //
 //==========================================================================
 
-//==========================================================================
-//
-//
-//
-//==========================================================================
-
-DPolyobjInterpolation::DPolyobjInterpolation(FPolyObj *po)
-: DInterpolation(po->Level)
+void DPolyobjInterpolation::Init(FPolyObj *po)
 {
+	Level = po->Level;
 	poly = po;
 	oldverts.Resize(po->Vertices.Size() << 1);
 	bakverts.Resize(po->Vertices.Size() << 1);
@@ -874,7 +1141,6 @@ void DPolyobjInterpolation::Serialize(FSerializer &arc)
 		("oldcy", oldcy);
 	if (arc.isReading()) bakverts.Resize(oldverts.Size());
 }
-
 
 //==========================================================================
 //

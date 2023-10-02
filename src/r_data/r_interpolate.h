@@ -12,21 +12,16 @@ struct FLevelLocals;
 
 class DInterpolation : public DObject
 {
-	friend struct FInterpolator;
-
 	DECLARE_ABSTRACT_CLASS(DInterpolation, DObject)
 	HAS_OBJECT_POINTERS
-
+public:
 	TObjPtr<DInterpolation*> Next;
 	TObjPtr<DInterpolation*> Prev;
-
-protected:
 	FLevelLocals *Level;
 	int refcount = 0;
 
 	DInterpolation(FLevelLocals *l = nullptr) : Level(l) {}
 
-public:
 	int AddRef();
 	int DelRef(bool force = false);
 
@@ -34,8 +29,13 @@ public:
 	virtual void UpdateInterpolation() = 0;
 	virtual void Restore() = 0;
 	virtual void Interpolate(double smoothratio) = 0;
-	
-	virtual void Serialize(FSerializer &arc);
+
+	virtual void Serialize(FSerializer &arc) override;
+
+	void CallUnlinkFromMap();
+	void CallUpdateInterpolation();
+	void CallRestore();
+	void CallInterpolate(double smoothratio);
 };
 
 //==========================================================================
