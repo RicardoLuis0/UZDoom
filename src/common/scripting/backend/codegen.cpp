@@ -3235,6 +3235,45 @@ void GenStructCopyOps(PStruct * s)
 	ops.Append(memcpy_ops);
 	ops.Append(complex_ops);
 
+    #if 0
+	{
+		DPrintf(DMSG_SPAMMY, "Struct: %s Num of copy ops: %u\n",s->DescriptiveName(), ops.Size());
+		unsigned n = ops.Size();
+		for(unsigned i = 0; i < n; i++)
+		{
+			DPrintf(DMSG_SPAMMY, "    op[%u] = ",i);
+			switch(ops[i].op)
+			{
+			case StructCopyOpType::Memcpy:
+				DPrintf(DMSG_SPAMMY, "memcpy");
+				break;
+			case StructCopyOpType::ObjBarrier:
+				DPrintf(DMSG_SPAMMY, "obj");
+				break;
+			case StructCopyOpType::DynArrayMapCopy:
+				DPrintf(DMSG_SPAMMY, "arr/map");
+				break;
+			case StructCopyOpType::StringCopy:
+				DPrintf(DMSG_SPAMMY, "str");
+				break;
+			case StructCopyOpType::ObjArrayBarrier:
+				DPrintf(DMSG_SPAMMY, "obj[]");
+				break;
+			case StructCopyOpType::ArrayCopyDynArrayMap:
+				DPrintf(DMSG_SPAMMY, "arr/map[]");
+				break;
+			case StructCopyOpType::ArrayCopyString:
+				DPrintf(DMSG_SPAMMY, "str[]");
+				break;
+			case StructCopyOpType::ArrayCopyStruct:
+				DPrintf(DMSG_SPAMMY, "struct[]");
+				break;
+			}
+			DPrintf(DMSG_SPAMMY, ", off = %u, sz = %u\n", ops[i].offset, ops[i].size);
+		}
+	}
+    #endif
+
 	FxComplexStructAssign::struct_copy_ops.Insert(s,std::move(ops));
 }
 
