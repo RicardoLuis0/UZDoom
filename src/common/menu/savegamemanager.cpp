@@ -188,6 +188,8 @@ void FSavegameManagerBase::NotifyNewSave(const FString &file, const FString &tit
 	node->bMissingWads = false;
 	int index = InsertSaveNode(node);
 
+	SetLastSavegame(index);
+
 	if (okForQuicksave)
 	{
 		if (quickSaveSlot == nullptr || quickSaveSlot == (FSaveGameNode*)1 || forceQuicksave) quickSaveSlot = node;
@@ -471,6 +473,23 @@ DEFINE_ACTION_FUNCTION(FSavegameManager, GetSavegame)
 	PARAM_SELF_STRUCT_PROLOGUE(FSavegameManagerBase);
 	PARAM_INT(i);
 	ACTION_RETURN_POINTER(self->GetSavegame(i));
+}
+
+//=============================================================================
+//
+//
+//
+//=============================================================================
+
+int ZS_GetLastSavegame(FSavegameManagerBase * self)
+{
+	return self->GetLastSavegame();
+}
+
+DEFINE_ACTION_FUNCTION_NATIVE(FSavegameManager, GetLastSavegame, ZS_GetLastSavegame)
+{
+	PARAM_SELF_STRUCT_PROLOGUE(FSavegameManagerBase);
+	ACTION_RETURN_INT(self->GetLastSavegame());
 }
 
 //=============================================================================

@@ -33,6 +33,9 @@
 **
 */
 
+#include <sstream>
+#include <iomanip>
+
 #include "doommenu.h"
 #include "version.h"
 #include "g_game.h"
@@ -57,6 +60,21 @@
 // Find savegames and read their titles
 //
 //=============================================================================
+
+int FSavegameManager::GetLastSavegame()
+{
+	ReadSaveStrings();
+	for(int i = 0; i < SaveGames.Size(); i++)
+	{
+		if(SaveGames[i] == lastSave) return i;
+	}
+	return -1;
+}
+
+void FSavegameManager::SetLastSavegame(int i)
+{
+	lastSave = SaveGames[i];
+}
 
 void FSavegameManager::ReadSaveStrings()
 {
@@ -91,7 +109,19 @@ void FSavegameManager::ReadSaveStrings()
 						FString engine = arc.GetString("Engine");
 						FString iwad = arc.GetString("Game WAD");
 						FString title = arc.GetString("Title");
+						FString time_str = arc.GetString("Creation Time");
+						time_t time = 0;
 
+						if(time_str.CompareNoCase("Unknown\n") != 0)
+						{
+							tm t = {};
+							//strptime(time_str.GetChars(), "%F %T", &time); //microsoft WHY
+
+							std::istringstream is(time_str.GetChars());
+							is >> std::get_time(&t, "%Y-%m-%d %H:%M:%S");
+
+							time = mktime(&t);
+						}
 
 						if (engine.Compare(GAMESIG) != 0 || savever > SAVEVER)
 						{
@@ -120,6 +150,12 @@ void FSavegameManager::ReadSaveStrings()
 						node->bOldVersion = oldVer;
 						node->bMissingWads = missing;
 						node->SaveTitle = title;
+
+						if(time > lastSaveTime && !missing)
+						{
+							lastSave = node;
+						}
+
 						InsertSaveNode(node);
 					}
 				}

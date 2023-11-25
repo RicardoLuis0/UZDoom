@@ -66,6 +66,7 @@ struct SavegameManager native ui
 	native void SetFileInfo(int Selected);
 	native int SavegameCount();
 	native SaveGameNode GetSavegame(int i);
+	native int GetLastSavegame();
 	native void InsertNewSaveNode();
 	native bool RemoveNewSaveNode();
 

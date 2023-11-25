@@ -42,6 +42,8 @@ public:
 	void ClearSaveGames();
 
 	virtual void ReadSaveStrings() = 0;
+	virtual int GetLastSavegame() = 0;
+	virtual void SetLastSavegame(int index) = 0;
 	void UnloadSaveData();
 
 	int RemoveSaveSlot(int index);
