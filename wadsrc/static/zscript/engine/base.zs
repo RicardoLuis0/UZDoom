@@ -924,6 +924,7 @@ struct Translation version("2.4")
 	native TranslationID AddTranslation();
 	native static TranslationID MakeID(int group, int num);
 	native static TranslationID GetID(Name transname);
+	native static TranslationID ParseTranslation(String trns, ...);
 }
 
 // Convenient way to attach functions to Quat

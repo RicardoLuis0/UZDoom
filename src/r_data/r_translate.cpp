@@ -51,6 +51,7 @@
 #include "m_crc32.h"
 #include "g_levellocals.h"
 #include "palutil.h"
+#include "v_draw.h"
 
 #include "gi.h"
 
@@ -840,3 +841,41 @@ DEFINE_ACTION_FUNCTION(_Translation, AddTranslation)
 	ACTION_RETURN_INT(trans.index());
 }
 
+int _ParseTranslation(VMVa_List &args)
+{
+	FRemapTable NewTranslation;
+	NewTranslation.MakeIdentity();
+
+	while (args.curindex < args.numargs)
+	{
+		if (args.reginfo[args.curindex] != REGT_STRING)
+		{
+			ThrowAbortException(X_OTHER, "Non-string argument passed to ParseTranslation");
+		}
+		const FString &s = args.args[args.curindex++].s();
+		NewTranslation.AddToTranslation(s.GetChars());
+	}
+
+	auto trans = GPalette.StoreTranslation(TRANSLATION_User, &NewTranslation);
+	return trans.index();
+}
+
+DEFINE_ACTION_FUNCTION(_Translation, ParseTranslation)
+{
+	PARAM_PROLOGUE;
+	PARAM_VA_POINTER(va_reginfo);
+
+	VMVa_List args = { param, 0, numparam - 1, va_reginfo };
+
+	ACTION_RETURN_INT(_ParseTranslation(args));
+}
+
+DEFINE_ACTION_FUNCTION(_Translate, ParseTranslation)
+{
+	PARAM_PROLOGUE;
+	PARAM_VA_POINTER(va_reginfo);
+
+	VMVa_List args = { param, 0, numparam - 1, va_reginfo };
+
+	ACTION_RETURN_INT(_ParseTranslation(args));
+}

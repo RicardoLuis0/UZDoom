@@ -69,6 +69,8 @@ struct Translate version("4.5")
 	{
 		return Translation.GetID(transname);
 	}
+
+	native static TranslationID ParseTranslation(String trns, ...);
 }
 
 struct DamageTypeDefinition native
