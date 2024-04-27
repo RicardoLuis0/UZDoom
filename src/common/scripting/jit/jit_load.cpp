@@ -228,11 +228,27 @@ void JitCompiler::EmitLO()
 
 	cc.mov(regA[A], asmjit::x86::ptr(regA[B], konstd[C]));
 	EmitReadBarrier();
+}
+
+void JitCompiler::EmitLO_R()
+{
+	EmitNullPointerThrow(B, X_READ_NIL);
+
+	cc.mov(regA[A], asmjit::x86::ptr(regA[B], regD[C]));
+	EmitReadBarrier();
+}
+
+void JitCompiler::EmitLNNO()
+{
+	EmitNullPointerThrow(B, X_READ_NIL);
+
+	cc.mov(regA[A], asmjit::x86::ptr(regA[B], konstd[C]));
+	EmitReadBarrier();
 	
 	EmitNullPointerThrow(A, X_READ_NIL);
 }
 
-void JitCompiler::EmitLO_R()
+void JitCompiler::EmitLNNO_R()
 {
 	EmitNullPointerThrow(B, X_READ_NIL);
 
