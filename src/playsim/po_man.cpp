@@ -114,13 +114,7 @@ public:
 
 // PRIVATE FUNCTION PROTOTYPES ---------------------------------------------
 
-static void UnLinkPolyobj (FPolyObj *po);
-static void LinkPolyobj (FPolyObj *po);
-static bool CheckMobjBlocking (side_t *seg, FPolyObj *po);
-static void SpawnPolyobj (int index, int tag, int type);
-static void DoMovePolyobj (FPolyObj *po, const DVector2 & move);
 static FPolyNode *NewPolyNode();
-static void FreePolyNode();
 static void ReleaseAllPolyNodes();
 
 // EXTERNAL DATA DECLARATIONS ----------------------------------------------
