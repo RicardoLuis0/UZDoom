@@ -202,6 +202,13 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 				po->tag = tag;
 				po->seqType = sd->linedef->args[2];
 				po->flags = sd->linedef->args[3];
+
+				if(sd->linedef->sidedef[1] == nullptr && (po->flags & POLYF_CARRYING))
+				{
+					Printf(TEXTCOLOR_RED "SpawnPolyobj: Carrying poly must be two-sided in poly %d.\n", tag);
+					po->flags &= ~POLYF_CARRYING;
+				}
+
 				if (po->seqType < 0 || po->seqType > (MAX_SNDSEQS - 1))
 				{
 					po->seqType = 0;
