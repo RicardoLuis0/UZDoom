@@ -1335,7 +1335,7 @@ bool PO_Busy (FLevelLocals *Level, int polyobj)
 //
 //==========================================================================
 
-void FPolyObj::ClearSubsectorLinks()
+void FPolyObj::ClearSubsectorLinks(bool absolute)
 {
 	while (subsectorlinks != nullptr)
 	{
@@ -1375,7 +1375,7 @@ void FLevelLocals::ClearAllSubsectorLinks()
 {
 	for(auto &poly : Polyobjects)
 	{
-		poly.ClearSubsectorLinks();
+		poly.ClearSubsectorLinks(true);
 	}
 	ReleaseAllPolyNodes();
 }

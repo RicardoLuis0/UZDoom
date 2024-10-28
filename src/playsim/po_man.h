@@ -64,6 +64,11 @@ struct FPolyNode
 	int state;
 };
 
+enum EPolyObjFlags
+{
+	POLYF_CARRYING = 0x00000001,
+};
+
 // ===== Polyobj data =====
 struct FPolyObj
 {
@@ -88,6 +93,7 @@ struct FPolyObj
 	bool		bBlocked;
 	uint8_t		bHasPortals;	// 1 for any portal, 2 for a linked portal (2 must block rotations.)
 	int			seqType;
+	int			flags;
 	double		Size;			// polyobj size (area of POLY_AREAUNIT == size of FRACUNIT)
 	FPolyNode	*subsectorlinks;
 	TObjPtr<DPolyAction*> specialdata;	// pointer to a thinker, if the poly is moving
@@ -104,7 +110,7 @@ struct FPolyObj
 	void LinkPolyobj ();
 	void RecalcActorFloorCeil(FBoundingBox bounds) const;
 	void CreateSubsectorLinks();
-	void ClearSubsectorLinks();
+	void ClearSubsectorLinks(bool absolute = false);
 	void CalcCenter();
 	void UpdateLinks();
 	static void ClearAllSubsectorLinks();

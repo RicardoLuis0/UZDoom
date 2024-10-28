@@ -201,6 +201,7 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 
 				po->tag = tag;
 				po->seqType = sd->linedef->args[2];
+				po->flags = sd->linedef->args[3];
 				if (po->seqType < 0 || po->seqType > (MAX_SNDSEQS - 1))
 				{
 					po->seqType = 0;
