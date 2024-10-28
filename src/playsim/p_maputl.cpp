@@ -580,6 +580,102 @@ void AActor::SetOrigin(double x, double y, double z, bool moving)
 // exit with false without checking anything else.
 //
 
+void P_FindPolyObjsInRadius(FLevelLocals * l, DVector3 pos, double radius, TArray<FPolyObj*> &out)
+{
+	FBoundingBox bbox(pos.X, pos.Y, radius);
+	FBlockPolyObjIterator it(l, bbox);
+
+	FPolyObj * poly;
+	while(poly = it.Next())
+	{
+		out.Push(poly);
+	}
+}
+
+//===========================================================================
+//
+// FBlockPolyObjIterator
+//
+//===========================================================================
+
+FBlockPolyObjIterator::FBlockPolyObjIterator(FLevelLocals *l, int _minx, int _miny, int _maxx, int _maxy, bool keepvalidcount)
+{
+	if (!keepvalidcount) validcount++;
+	Level = l;
+	minx = _minx;
+	maxx = _maxx;
+	miny = _miny;
+	maxy = _maxy;
+	Reset();
+}
+
+void FBlockPolyObjIterator::init(const FBoundingBox &box)
+{
+	validcount++;
+	maxy = Level->blockmap.GetBlockY(box.Top());
+	miny = Level->blockmap.GetBlockY(box.Bottom());
+	maxx = Level->blockmap.GetBlockX(box.Right());
+	minx = Level->blockmap.GetBlockX(box.Left());
+	Reset();
+}
+
+FBlockPolyObjIterator::FBlockPolyObjIterator(FLevelLocals *l, const FBoundingBox &box)
+{
+	Level = l;
+	init(box);
+}
+
+//===========================================================================
+//
+// FBlockPolyObjIterator :: StartBlock
+//
+//===========================================================================
+
+void FBlockPolyObjIterator::StartBlock(int x, int y) 
+{ 
+	curx = x; 
+	cury = y; 
+	if (Level->blockmap.isValidBlock(x, y))
+	{
+		unsigned offset = y*Level->blockmap.bmapwidth + x;
+		polyLink = Level->PolyBlockMap.Size() > offset? Level->PolyBlockMap[offset] : nullptr;
+	}
+	else
+	{
+		// invalid block
+		polyLink = NULL;
+	}
+}
+
+//===========================================================================
+//
+// FBlockPolyObjIterator :: Next
+//
+//===========================================================================
+
+FPolyObj *FBlockPolyObjIterator::Next()
+{
+	while (true)
+	{
+		while(polyLink != NULL)
+		{
+			if (polyLink->polyobj)
+			{
+				FPolyObj * poly = polyLink->polyobj;
+				polyLink = polyLink->next;
+				return poly;
+			}
+			else polyLink = polyLink->next;
+		}
+
+		if (++curx > maxx)
+		{
+			curx = minx;
+			if (++cury > maxy) return NULL;
+		}
+		StartBlock(curx, cury);
+	}
+}
 
 //===========================================================================
 //

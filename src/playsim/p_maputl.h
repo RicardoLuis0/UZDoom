@@ -211,6 +211,28 @@ private:
 	TArray<uint16_t> data;
 };
 
+void P_FindPolyObjsInRadius(FLevelLocals * l, DVector3 pos, double radius, TArray<FPolyObj*> &out);
+
+class FBlockPolyObjIterator
+{
+	FLevelLocals *Level;
+	int minx, maxx;
+	int miny, maxy;
+
+	int curx, cury;
+	polyblock_t *polyLink;
+
+	void StartBlock(int x, int y);
+
+	FBlockPolyObjIterator(FLevelLocals *l)  { Level = l; }
+	void init(const FBoundingBox &box);
+public:
+	FBlockPolyObjIterator(FLevelLocals *Level, int minx, int miny, int maxx, int maxy, bool keepvalidcount = false);
+	FBlockPolyObjIterator(FLevelLocals *Level, const FBoundingBox &box);
+	FPolyObj *Next();
+	void Reset() { StartBlock(minx, miny); }
+};
+
 class FBlockLinesIterator
 {
 	friend class FMultiBlockLinesIterator;
