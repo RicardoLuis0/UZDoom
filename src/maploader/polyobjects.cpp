@@ -326,6 +326,7 @@ void MapLoader::TranslateToStartSpot (int tag, const DVector2 &origin)
 	for (unsigned i = 0; i < po->Sidedefs.Size(); i++)
 	{
 		po->Sidedefs[i]->Flags |= WALLF_POLYOBJ;
+		po->Sidedefs[i]->OwningPoly = po;
 	}
 	for (unsigned i = 0; i < po->Linedefs.Size(); i++)
 	{

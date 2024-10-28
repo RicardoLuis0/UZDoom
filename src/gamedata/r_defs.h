@@ -1269,6 +1269,8 @@ struct side_t
 	int numsegs;
 	int sidenum;
 
+	FPolyObj * OwningPoly;
+
 	int GetLightLevel (bool foggy, int baselight, int which, bool is3dlight=false, int *pfakecontrast_usedbygzdoom=NULL) const;
 
 	void SetLight(int16_t l)

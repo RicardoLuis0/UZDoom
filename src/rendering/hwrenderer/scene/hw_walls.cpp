@@ -2089,11 +2089,21 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	vertindex = 0;
 	vertcount = 0;
 
+	sector_t * ff_frontsector = frontsector;
+	sector_t * ff_backsector = backsector;
+
 	if ((seg->sidedef->Flags & WALLF_POLYOBJ) && seg->backsector)
 	{
 		// Textures on 2-sided polyobjects are aligned to the actual seg's sectors
 		segfront = realfront = seg->frontsector;
 		segback = realback = seg->backsector;
+
+		// Render 3d floors on walls for carrying polyobjects
+		if(seg->sidedef->OwningPoly->flags & POLYF_CARRYING)
+		{
+			ff_frontsector = seg->sidedef->linedef->frontsector;
+			ff_backsector = seg->sidedef->linedef->backsector;
+		}
 	}
 	else
 	{
@@ -2141,6 +2151,7 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 		}
 		v1 = seg->v1;
 		v2 = seg->v2;
+
 		flags |= HWF_NOSPLITUPPER | HWF_NOSPLITLOWER;	// seg-splitting not needed for single segs.
 	}
 
@@ -2405,11 +2416,11 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 					fch1, fch2, ffh1, ffh2, bch1, bch2, bfh1, bfh2, zalign, skew);
 			}
 
-			if (backsector->e->XFloor.ffloors.Size() || frontsector->e->XFloor.ffloors.Size())
+			if (ff_backsector->e->XFloor.ffloors.Size() || ff_frontsector->e->XFloor.ffloors.Size())
 			{
 				lightlevel = hw_ClampLight(seg->sidedef->GetLightLevel(foggy, orglightlevel, side_t::top, false, &rel));
 				rellight = CalcRelLight(lightlevel, orglightlevel, rel);
-				DoFFloorBlocks(di, seg, frontsector, backsector, fch1, fch2, ffh1, ffh2, bch1, bch2, bfh1, bfh2);
+				DoFFloorBlocks(di, seg, ff_frontsector, ff_backsector, fch1, fch2, ffh1, ffh2, bch1, bch2, bfh1, bfh2);
 			}
 		}
 
