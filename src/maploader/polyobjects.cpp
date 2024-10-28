@@ -297,6 +297,21 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 	po->Vertices.ShrinkToFit();
 }
 
+
+//==========================================================================
+//
+// CalcAnchorOffset
+//
+//==========================================================================
+
+DVector2 FPolyObj::CalcAnchorOffset(DVector2 StartSpotOffset)
+{
+	float sin = Angle.Sin();
+	float cos = Angle.Cos();
+
+	return DVector2(StartSpotOffset.X * cos + StartSpotOffset.Y * sin, StartSpotOffset.Y * cos + StartSpotOffset.X * sin);
+}
+
 //==========================================================================
 //
 // TranslateToStartSpot
@@ -319,6 +334,7 @@ void MapLoader::TranslateToStartSpot (int tag, const DVector2 &origin)
 		Printf(TEXTCOLOR_RED "TranslateToStartSpot: Anchor point located without a StartSpot point: %d\n", tag);
 		return;
 	}
+	po->AnchorSpot.pos = origin; // save original starting spot for sector position calculations
 	po->OriginalPts.Resize(po->Vertices.Size());
 	po->PrevPts.Resize(po->Vertices.Size());
 	delta = origin - po->StartSpot.pos;

@@ -711,6 +711,7 @@ bool EV_StopPoly(FLevelLocals *Level, int polynum)
 
 FPolyObj::FPolyObj()
 {
+	AnchorSpot.pos = { 0,0 };
 	StartSpot.pos = { 0,0 };
 	Angle = nullAngle;
 	tag = 0;

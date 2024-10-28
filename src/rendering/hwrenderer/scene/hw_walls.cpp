@@ -282,8 +282,8 @@ void HWWall::RenderTexturedWall(HWWallDispatcher*di, FRenderState &state, int rf
 		{
 			secplane_t &lowplane = i == (*lightlist).Size() - 1 ? frontsector->floorplane : (*lightlist)[i + 1].plane;
 			// this must use the exact same calculation method as HWWall::Process etc.
-			float low1 = lowplane.ZatPoint(vertexes[0]);
-			float low2 = lowplane.ZatPoint(vertexes[1]);
+			float low1 = lowplane.ZatPoint(heightVertices[0]);
+			float low2 = lowplane.ZatPoint(heightVertices[1]);
 
 			if (low1 < ztop[0] || low2 < ztop[1])
 			{
@@ -1816,8 +1816,8 @@ void HWWall::BuildFFBlock(HWWallDispatcher *di, seg_t * seg, F3DFloor * rover, i
 
 __forceinline void HWWall::GetPlanePos(F3DFloor::planeref *planeref, float &left, float &right)
 {
-	left=planeref->plane->ZatPoint(vertexes[0]);
-	right=planeref->plane->ZatPoint(vertexes[1]);
+	left=planeref->plane->ZatPoint(heightVertices[0]);
+	right=planeref->plane->ZatPoint(heightVertices[1]);
 }
 
 //==========================================================================
@@ -2062,6 +2062,8 @@ CVAR(Int, bottomskew, 0, 0)
 void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, sector_t * backsector)
 {
 	vertex_t * v1, *v2;
+	DVector2 v1local, v2local;
+
 	float fch1;
 	float ffh1;
 	float fch2;
@@ -2092,6 +2094,8 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	sector_t * ff_frontsector = frontsector;
 	sector_t * ff_backsector = backsector;
 
+	bool complex_poly = (seg->sidedef->Flags & WALLF_POLYOBJ && seg->sidedef->OwningPoly->flags & POLYF_CARRYING);
+
 	if ((seg->sidedef->Flags & WALLF_POLYOBJ) && seg->backsector)
 	{
 		// Textures on 2-sided polyobjects are aligned to the actual seg's sectors
@@ -2099,7 +2103,7 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 		segback = realback = seg->backsector;
 
 		// Render 3d floors on walls for carrying polyobjects
-		if(seg->sidedef->OwningPoly->flags & POLYF_CARRYING)
+		if(complex_poly)	
 		{
 			ff_frontsector = seg->sidedef->linedef->frontsector;
 			ff_backsector = seg->sidedef->linedef->backsector;
@@ -2155,9 +2159,10 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 		flags |= HWF_NOSPLITUPPER | HWF_NOSPLITLOWER;	// seg-splitting not needed for single segs.
 	}
 
-
 	vertexes[0] = v1;
 	vertexes[1] = v2;
+	heightVertices[0] = DVector2(v1->fX(), v1->fY());
+	heightVertices[1] = DVector2(v2->fX(), v2->fY());
 
 	glseg.x1 = v1->fX();
 	glseg.y1 = v1->fY();
@@ -2176,13 +2181,23 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	RenderStyle = STYLE_Normal;
 	texture = NULL;
 
+	if(complex_poly)	
+	{
+		FPolyObj * po = seg->sidedef->OwningPoly;
+
+		// Render polyobject slope heights properly
+		heightVertices[0] = po->AnchorSpot.pos + po->CalcAnchorOffset(heightVertices[0] - po->StartSpot.pos);
+		heightVertices[1] = po->AnchorSpot.pos + po->CalcAnchorOffset(heightVertices[1] - po->StartSpot.pos);
+	}
+
 
 	if (frontsector->GetWallGlow(topglowcolor, bottomglowcolor)) flags |= HWF_GLOW;
 
-	zfloor[0] = ffh1 = segfront->floorplane.ZatPoint(v1);
-	zfloor[1] = ffh2 = segfront->floorplane.ZatPoint(v2);
-	zceil[0] = fch1 = segfront->ceilingplane.ZatPoint(v1);
-	zceil[1] = fch2 = segfront->ceilingplane.ZatPoint(v2);
+	zfloor[0] = ffh1 = segfront->floorplane.ZatPoint(heightVertices[0]);
+	zfloor[1] = ffh2 = segfront->floorplane.ZatPoint(heightVertices[1]);
+	zceil[0] = fch1 = segfront->ceilingplane.ZatPoint(heightVertices[0]);
+	zceil[1] = fch2 = segfront->ceilingplane.ZatPoint(heightVertices[1]);
+	
 
 	if (seg->linedef->special == Line_Horizon)
 	{
@@ -2236,10 +2251,10 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	}
 	else // two sided
 	{
-		float bfh1 = segback->floorplane.ZatPoint(v1);
-		float bfh2 = segback->floorplane.ZatPoint(v2);
-		float bch1 = segback->ceilingplane.ZatPoint(v1);
-		float bch2 = segback->ceilingplane.ZatPoint(v2);
+		float bfh1 = segback->floorplane.ZatPoint(heightVertices[0]);
+		float bfh2 = segback->floorplane.ZatPoint(heightVertices[1]);
+		float bch1 = segback->ceilingplane.ZatPoint(heightVertices[0]);
+		float bch2 = segback->ceilingplane.ZatPoint(heightVertices[1]);
 		float zalign = 0.f;
 
 
@@ -2526,6 +2541,8 @@ void HWWall::ProcessLowerMiniseg(HWWallDispatcher *di, seg_t *seg, sector_t * fr
 		vertex_t * v2 = seg->v2;
 		vertexes[0] = v1;
 		vertexes[1] = v2;
+		heightVertices[0] = DVector2(v1->fX(), v1->fY());
+		heightVertices[1] = DVector2(v2->fX(), v2->fY());
 
 		glseg.x1 = v1->fX();
 		glseg.y1 = v1->fY();

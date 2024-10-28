@@ -78,6 +78,7 @@ struct FPolyObj
 	TArray<vertex_t *>		Vertices;
 	TArray<FPolyVertex>		OriginalPts;
 	TArray<FPolyVertex>		PrevPts;
+	FPolyVertex				AnchorSpot;
 	FPolyVertex				StartSpot;
 	FPolyVertex				CenterSpot;
 	FBoundingBox			Bounds;	// Bounds in map coordinates 
@@ -114,6 +115,8 @@ struct FPolyObj
 	void CalcCenter();
 	void UpdateLinks();
 	static void ClearAllSubsectorLinks();
+
+	DVector2 CalcAnchorOffset(DVector2 StartSpotOffset);
 
 private:
 

@@ -159,6 +159,7 @@ public:
 	friend class HWPortal;
 
 	vertex_t* vertexes[2];				// required for polygon splitting
+	DVector2 heightVertices[2];
 	FGameTexture* texture;
 	TArray<lightlist_t>* lightlist;
 	LightmapSurface* lightmap;
