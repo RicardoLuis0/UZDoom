@@ -118,6 +118,11 @@ struct FPolyObj
 
 	DVector2 CalcAnchorOffset(DVector2 StartSpotOffset);
 
+	inline DVector2 CalcLocalOffset(DVector2 pos)
+	{
+		return AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
+	}
+
 private:
 
 	void ThrustMobj (AActor *actor, side_t *side);

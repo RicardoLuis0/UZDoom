@@ -75,22 +75,22 @@ struct FTraceInfo
 	int sectorsel;		
 
 	void Setup3DFloors();
-	bool LineCheck(intercept_t *in, double dist, DVector3 hit, bool special3dpass);
-	bool ThingCheck(intercept_t *in, double dist, DVector3 hit);
+	bool LineCheck(intercept_t *in, double dist, DVector3 hit, DVector2 heightHit, DVector2 heightHitCur, DVector2 heightHitStart, bool special3dpass);
+	bool ThingCheck(intercept_t *in, double dist, DVector3 hit, DVector2 heightHit, DVector2 heightHitStart);
 	bool TraceTraverse (int ptflags);
-	bool CheckPlane(const secplane_t &plane);
+	bool CheckPlane(const secplane_t &plane, DVector2 StartPos);
 	void EnterLinePortal(FPathTraverse &pt, intercept_t *in);
 	void EnterSectorPortal(FPathTraverse &pt, int position, double frac, sector_t *entersec);
 
 
-	bool CheckSectorPlane(const sector_t *sector, bool checkFloor)
+	bool CheckSectorPlane(const sector_t *sector, bool checkFloor, DVector2 StartPos)
 	{
-		return CheckPlane(checkFloor ? sector->floorplane : sector->ceilingplane);
+		return CheckPlane(checkFloor ? sector->floorplane : sector->ceilingplane, StartPos);
 	}
 
-	bool Check3DFloorPlane(const F3DFloor *ffloor, bool checkBottom)
+	bool Check3DFloorPlane(const F3DFloor *ffloor, bool checkBottom, DVector2 StartPos)
 	{
-		return CheckPlane(checkBottom? *(ffloor->bottom.plane) : *(ffloor->top.plane));
+		return CheckPlane(checkBottom? *(ffloor->bottom.plane) : *(ffloor->top.plane), StartPos);
 	}
 
 	void SetSourcePosition()
@@ -300,9 +300,19 @@ void FTraceInfo::Setup3DFloors()
 		double sdist = MaxDist * startfrac;
 		DVector3 pos = Start + Vec * sdist;
 
+		FPolyObj *poCur = nullptr;
+		DVector2 heightHit = pos.XY();
+		DVector2 heightHitStart = Start.XY();
 
-		double bf = CurSector->floorplane.ZatPoint(pos);
-		double bc = CurSector->ceilingplane.ZatPoint(pos);
+		if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		{
+			poCur = CurSector->Lines[0]->sidedef[0]->OwningPoly;
+			heightHit = poCur->CalcLocalOffset(heightHit);
+			heightHitStart = poCur->CalcLocalOffset(heightHitStart);
+		}
+
+		double bf = CurSector->floorplane.ZatPoint(heightHit);
+		double bc = CurSector->ceilingplane.ZatPoint(heightHit);
 
 		for (auto rover : ff)
 		{
@@ -311,10 +321,10 @@ void FTraceInfo::Setup3DFloors()
 
 			if (Results->Crossed3DWater == NULL)
 			{
-				if (Check3DFloorPlane(rover, false) && isLiquid(rover))
+				if (Check3DFloorPlane(rover, false, heightHitStart) && isLiquid(rover))
 				{
 					// only consider if the plane is above the actual floor.
-					if (rover->top.plane->ZatPoint(Results->HitPos) > bf)
+					if (rover->top.plane->ZatPoint(heightHit) > bf)
 					{
 						Results->Crossed3DWater = rover;
 						Results->Crossed3DWaterPos = Results->HitPos;
@@ -325,8 +335,8 @@ void FTraceInfo::Setup3DFloors()
 
 			if (!(rover->flags&FF_SHOOTTHROUGH))
 			{
-				double ff_bottom = rover->bottom.plane->ZatPoint(pos);
-				double ff_top = rover->top.plane->ZatPoint(pos);
+				double ff_bottom = rover->bottom.plane->ZatPoint(heightHit);
+				double ff_top = rover->top.plane->ZatPoint(heightHit);
 				// clip to the part of the sector we are in
 				if (pos.Z > ff_top)
 				{
@@ -382,7 +392,7 @@ void FTraceInfo::Setup3DFloors()
 //
 //==========================================================================
 
-bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool special3dpass)
+bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, DVector2 heightHit, DVector2 heightHitCur, DVector2 heightHitStart, bool special3dpass)
 {
 	int lineside;
 	sector_t *entersector;
@@ -436,23 +446,23 @@ bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool spec
 		}
 	}
 
-	ff = CurSector->floorplane.ZatPoint(hit);
-	fc = CurSector->ceilingplane.ZatPoint(hit);
+	ff = CurSector->floorplane.ZatPoint(heightHitCur);
+	fc = CurSector->ceilingplane.ZatPoint(heightHitCur);
 
 	if (entersector != NULL)
 	{
-		bf = entersector->floorplane.ZatPoint(hit);
-		bc = entersector->ceilingplane.ZatPoint(hit);
+		bf = entersector->floorplane.ZatPoint(heightHit);
+		bc = entersector->ceilingplane.ZatPoint(heightHit);
 	}
 
 	sector_t *hsec = CurSector->GetHeightSec();
 	if (Results->CrossedWater == NULL &&
 		hsec != NULL &&
-		Start.Z > hsec->floorplane.ZatPoint(Start) &&
-		hit.Z <= hsec->floorplane.ZatPoint(hit))
+		Start.Z > hsec->floorplane.ZatPoint(heightHitStart) &&
+		hit.Z <= hsec->floorplane.ZatPoint(heightHit))
 	{
 		// hit crossed a water plane
-		if (CheckSectorPlane(hsec, true))
+		if (CheckSectorPlane(hsec, true, heightHitStart))
 		{
 			Results->CrossedWater = &Level->sectors[CurSector->sectornum];
 			Results->CrossedWaterPos = Results->HitPos;
@@ -502,8 +512,8 @@ bool FTraceInfo::LineCheck(intercept_t *in, double dist, DVector3 hit, bool spec
 
 				if (entershootthrough != inshootthrough && rover->flags&FF_EXISTS)
 				{
-					double ff_bottom = rover->bottom.plane->ZatPoint(hit);
-					double ff_top = rover->top.plane->ZatPoint(hit);
+					double ff_bottom = rover->bottom.plane->ZatPoint(heightHit);
+					double ff_top = rover->top.plane->ZatPoint(heightHit);
 
 					// clip to the part of the sector we are in
 					if (hit.Z > ff_top)
@@ -588,7 +598,7 @@ cont:
 		Results->Sector = &Level->sectors[CurSector->sectornum];
 
 		if (Results->HitType != TRACE_HitWall &&
-			!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor))
+			!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor, heightHitStart))
 		{ // trace is parallel to the plane (or right on it)
 			if (entersector == NULL)
 			{
@@ -643,7 +653,7 @@ cont:
 		case TRACE_Skip:
 			Results->HitType = TRACE_HitNone;
 			if (!special3dpass && (TraceFlags & TRACE_3DCallback) && entersector && entersector->e->XFloor.ffloors.Size())
-				return LineCheck(in, dist, hit, true);
+				return LineCheck(in, dist, hit, heightHit, heightHitCur, heightHitStart, true);
 			break;
 
 		default:
@@ -670,7 +680,7 @@ cont:
 //
 //==========================================================================
 
-bool FTraceInfo::ThingCheck(intercept_t *in, double dist, DVector3 hit)
+bool FTraceInfo::ThingCheck(intercept_t *in, double dist, DVector3 hit, DVector2 heightHit, DVector2 heightHitStart)
 {
 	if (hit.Z > in->d.thing->Top())
 	{
@@ -708,8 +718,8 @@ bool FTraceInfo::ThingCheck(intercept_t *in, double dist, DVector3 hit)
 	if (CurSector->e->XFloor.ffloors.Size())
 	{
 		// check for 3D floor hits first.
-		double ff_floor = CurSector->floorplane.ZatPoint(hit);
-		double ff_ceiling = CurSector->ceilingplane.ZatPoint(hit);
+		double ff_floor = CurSector->floorplane.ZatPoint(heightHit);
+		double ff_ceiling = CurSector->ceilingplane.ZatPoint(heightHit);
 
 		if (hit.Z > ff_ceiling && CurSector->PortalBlocksMovement(sector_t::ceiling))	// actor is hit above the current ceiling
 		{
@@ -726,7 +736,7 @@ bool FTraceInfo::ThingCheck(intercept_t *in, double dist, DVector3 hit)
 		// the trace hit a 3D floor before the thing.
 		// Calculate an intersection and abort.
 		Results->Sector = &Level->sectors[CurSector->sectornum];
-		if (!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor))
+		if (!CheckSectorPlane(CurSector, Results->HitType == TRACE_HitFloor, heightHitStart))
 		{
 			Results->HitType = TRACE_HitNone;
 		}
@@ -789,6 +799,31 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 
 	while ((in = it.Next()))
 	{
+		double dist = MaxDist * in->frac;
+		DVector3 hit = Start + Vec * dist;
+
+		FPolyObj *po = nullptr;
+		DVector2 heightHit = hit.XY();
+
+		if((in->d.line->sidedef[0]->Flags & WALLF_POLYOBJ) && (in->d.line->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		{
+			po = in->d.line->sidedef[0]->OwningPoly;
+			heightHit = po->CalcLocalOffset(heightHit);
+		}
+
+		FPolyObj *poCur = nullptr;
+		DVector2 heightHitCur = hit.XY();
+		DVector2 heightHitPos = Results->HitPos.XY();
+		DVector2 heightHitStart = Start.XY();
+
+		if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		{
+			poCur = CurSector->Lines[0]->sidedef[0]->OwningPoly;
+			heightHitCur = poCur->CalcLocalOffset(heightHitCur);
+			heightHitPos = poCur->CalcLocalOffset(heightHitPos);
+			heightHitStart = poCur->CalcLocalOffset(heightHitStart);
+		}
+
 		// Deal with splashes in 3D floors (but only run once per sector, not each iteration - and stop if something was found.)
 		if (Results->Crossed3DWater == NULL && lastsplashsector != CurSector->sectornum)
 		{
@@ -796,10 +831,10 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 			{
 				if ((rover->flags & FF_EXISTS) && isLiquid(rover))
 				{
-					if (Check3DFloorPlane(rover, false))
+					if (Check3DFloorPlane(rover, false, heightHitStart))
 					{
 						// only consider if the plane is above the actual floor.
-						if (rover->top.plane->ZatPoint(Results->HitPos) > CurSector->floorplane.ZatPoint(Results->HitPos))
+						if (rover->top.plane->ZatPoint(heightHitPos) > CurSector->floorplane.ZatPoint(heightHitPos))
 						{
 							Results->Crossed3DWater = rover;
 							Results->Crossed3DWaterPos = Results->HitPos;
@@ -810,9 +845,6 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 			}
 			lastsplashsector = CurSector->sectornum;
 		}
-
-		double dist = MaxDist * in->frac;
-		DVector3 hit = Start + Vec * dist;
 
 		// Crossed a floor portal? 
 		if (Vec.Z < 0 && !CurSector->PortalBlocksMovement(sector_t::floor))
@@ -844,7 +876,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 			if (in->d.line->isLinePortal() && P_PointOnLineSidePrecise(Start, in->d.line) == 0)
 			{
 				sector_t* entersector = in->d.line->backsector;
-				if (entersector == NULL || (hit.Z >= entersector->floorplane.ZatPoint(hit) && hit.Z <= entersector->ceilingplane.ZatPoint(hit)))
+				if (entersector == NULL || (hit.Z >= entersector->floorplane.ZatPoint(heightHit) && hit.Z <= entersector->ceilingplane.ZatPoint(heightHit)))
 				{
 					FLinePortal* port = in->d.line->getPortal();
 					// The caller cannot handle portals without global offset.
@@ -855,22 +887,33 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 					}
 				}
 			}
-			if (!LineCheck(in, dist, hit, false)) break;
+			if (!LineCheck(in, dist, hit, heightHit, heightHitCur, heightHitStart, false)) break;
 		}
 		else if (((in->d.thing->flags & ActorMask) || ActorMask == 0xffffffff) && in->d.thing != IgnoreThis)
 		{
-			if (!ThingCheck(in, dist, hit)) break;
+			if (!ThingCheck(in, dist, hit, heightHit, heightHitStart)) break;
 		}
+	}
+
+	FPolyObj *po = nullptr;
+	DVector2 heightHitCur = Results->HitPos.XY();
+	DVector2 heightHitStart = Start.XY();
+
+	if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+	{
+		po = CurSector->Lines[0]->sidedef[0]->OwningPoly;
+		heightHitCur = po->CalcLocalOffset(heightHitCur);
+		heightHitStart = po->CalcLocalOffset(heightHitStart);
 	}
 
 	if (Results->HitType == TRACE_HitNone)
 	{
-		if (CurSector->PortalBlocksMovement(sector_t::floor) && CheckSectorPlane(CurSector, true))
+		if (CurSector->PortalBlocksMovement(sector_t::floor) && CheckSectorPlane(CurSector, true, heightHitStart))
 		{
 			Results->HitType = TRACE_HitFloor;
 			Results->HitTexture = CurSector->GetTexture(sector_t::floor);
 		}
-		else if (CurSector->PortalBlocksMovement(sector_t::ceiling) && CheckSectorPlane(CurSector, false))
+		else if (CurSector->PortalBlocksMovement(sector_t::ceiling) && CheckSectorPlane(CurSector, false, heightHitStart))
 		{
 			Results->HitType = TRACE_HitCeiling;
 			Results->HitTexture = CurSector->GetTexture(sector_t::ceiling);
@@ -882,15 +925,15 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 
 	if (Results->CrossedWater == NULL &&
 		CurSector->heightsec != NULL &&
-		CurSector->heightsec->floorplane.ZatPoint(Start) < Start.Z &&
-		CurSector->heightsec->floorplane.ZatPoint(Results->HitPos) >= Results->HitPos.Z)
+		CurSector->heightsec->floorplane.ZatPoint(heightHitStart) < Start.Z &&
+		CurSector->heightsec->floorplane.ZatPoint(heightHitCur) >= Results->HitPos.Z)
 	{
 		// Save the result so that the water check doesn't destroy it.
 		FTraceResults *res = Results;
 		FTraceResults hsecResult;
 		Results = &hsecResult;
 
-		if (CheckSectorPlane(CurSector->heightsec, true))
+		if (CheckSectorPlane(CurSector->heightsec, true, heightHitStart))
 		{
 			Results->CrossedWater = &Level->sectors[CurSector->sectornum];
 			Results->CrossedWaterPos = Results->HitPos;
@@ -915,12 +958,12 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 	// modders will need this to get accurate plane normals on slopes
 	if (Results->HitType == TRACE_HitFloor)
 	{
-		double secbottom = Results->Sector->floorplane.ZatPoint(Results->HitPos);
+		double secbottom = Results->Sector->floorplane.ZatPoint(heightHitCur);
 		for (auto rover : Results->Sector->e->XFloor.ffloors)
 		{
 			if (!(rover->flags&FF_EXISTS))
 				continue;
-			double ff_top = rover->top.plane->ZatPoint(Results->HitPos);
+			double ff_top = rover->top.plane->ZatPoint(heightHitCur);
 			if (fabs(ff_top-secbottom) < EQUAL_EPSILON)
 				continue;
 			if (fabs(ff_top-Results->HitPos.Z) > EQUAL_EPSILON)
@@ -931,12 +974,12 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 	}
 	else if (Results->HitType == TRACE_HitCeiling)
 	{
-		double sectop = Results->Sector->ceilingplane.ZatPoint(Results->HitPos);
+		double sectop = Results->Sector->ceilingplane.ZatPoint(heightHitCur);
 		for (auto rover : Results->Sector->e->XFloor.ffloors)
 		{
 			if (!(rover->flags&FF_EXISTS))
 				continue;
-			double ff_bottom = rover->bottom.plane->ZatPoint(Results->HitPos);
+			double ff_bottom = rover->bottom.plane->ZatPoint(heightHitCur);
 			if (fabs(ff_bottom-sectop) < EQUAL_EPSILON)
 				continue;
 			if (fabs(ff_bottom-Results->HitPos.Z) > EQUAL_EPSILON)
@@ -954,13 +997,13 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 //
 //==========================================================================
 
-bool FTraceInfo::CheckPlane (const secplane_t &plane)
+bool FTraceInfo::CheckPlane (const secplane_t &plane, DVector2 StartPos)
 {
 	double den = plane.Normal() | Vec;
 
 	if (den != 0)
 	{
-		double num = (plane.Normal() | Start) + plane.fD();
+		double num = (plane.Normal() | DVector3(StartPos, Start.Z)) + plane.fD();
 
 		double hitdist = -num / den;
 
