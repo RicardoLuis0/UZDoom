@@ -303,12 +303,7 @@ void FTraceInfo::Setup3DFloors()
 		DVector2 heightHit = pos.XY();
 		DVector2 heightHitStart = Start.XY();
 
-		if(CurSector->Lines[0]->IsComplexPolyObj())
-		{
-			FPolyObj *po = CurSector->Lines[0]->GetPolyObj();
-			heightHit = po->CalcLocalOffset(heightHit);
-			heightHitStart = po->CalcLocalOffset(heightHitStart);
-		}
+		FPolyObj::ComplexToLocalOffsets(CurSector, heightHit, heightHitStart);
 
 		double bf = CurSector->floorplane.ZatPoint(heightHit);
 		double bc = CurSector->ceilingplane.ZatPoint(heightHit);
@@ -803,24 +798,13 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 
 		DVector2 heightHit = hit.XY();
 
-		if(in->d.line->IsComplexPolyObj())
-		{
-			FPolyObj *po = in->d.line->GetPolyObj();
-			heightHit = po->CalcLocalOffset(heightHit);
-		}
+		FPolyObj::ComplexToLocalOffsets(in->d.line, heightHit);
 
 		DVector2 heightHitCur = hit.XY();
 		DVector2 heightHitPos = Results->HitPos.XY();
 		DVector2 heightHitStart = Start.XY();
 
-		if(CurSector->IsComplexPolyObj())
-		{
-			FPolyObj *po = CurSector->GetPolyObj();
-
-			heightHitCur = po->CalcLocalOffset(heightHitCur);
-			heightHitPos = po->CalcLocalOffset(heightHitPos);
-			heightHitStart = po->CalcLocalOffset(heightHitStart);
-		}
+		FPolyObj::ComplexToLocalOffsets(CurSector, heightHitCur, heightHitPos, heightHitStart);
 
 		// Deal with splashes in 3D floors (but only run once per sector, not each iteration - and stop if something was found.)
 		if (Results->Crossed3DWater == NULL && lastsplashsector != CurSector->sectornum)
@@ -896,12 +880,7 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 	DVector2 heightHitCur = Results->HitPos.XY();
 	DVector2 heightHitStart = Start.XY();
 
-	if(CurSector->Lines[0]->IsComplexPolyObj())
-	{
-		FPolyObj *po = CurSector->Lines[0]->GetPolyObj();
-		heightHitCur = po->CalcLocalOffset(heightHitCur);
-		heightHitStart = po->CalcLocalOffset(heightHitStart);
-	}
+	FPolyObj::ComplexToLocalOffsets(CurSector, heightHitCur, heightHitStart);
 
 	if (Results->HitType == TRACE_HitNone)
 	{

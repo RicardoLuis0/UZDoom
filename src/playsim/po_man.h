@@ -122,7 +122,37 @@ struct FPolyObj
 	{
 		return AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
 	}
-	
+
+	inline void ToLocalOffset(DVector2 &pos)
+	{
+		pos = AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
+	}
+
+	template<typename... T>
+	inline void ToLocalOffsets(T&... pos)
+	{
+		(ToLocalOffset(pos), ...);
+	}
+
+	template<typename T, typename... V>
+	static inline void ComplexToLocalOffsets(T &ref, V&... pos)
+	{
+		if(ref->IsComplexPolyObj())
+		{
+			ref->GetPolyObj()->ToLocalOffsets(pos...);
+		}
+	}
+
+	template<typename T>
+	static inline DVector2 ComplexCalcLocalOffset(T &ref, DVector2 pos)
+	{
+		if(ref->IsComplexPolyObj())
+		{
+			return ref->GetPolyObj()->CalcLocalOffset(pos);
+		}
+		return pos;
+	}
+
 private:
 
 	void ThrustMobj (AActor *actor, side_t *side);

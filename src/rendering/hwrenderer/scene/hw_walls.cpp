@@ -2181,15 +2181,8 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	RenderStyle = STYLE_Normal;
 	texture = NULL;
 
-	if(complex_poly)	
-	{
-		FPolyObj * po = seg->sidedef->OwningPoly;
-
-		// Render polyobject slope heights properly
-		heightVertices[0] = po->CalcLocalOffset(heightVertices[0]);
-		heightVertices[1] = po->CalcLocalOffset(heightVertices[1]);
-	}
-
+	// Render polyobject slope heights properly
+	FPolyObj::ComplexToLocalOffsets(seg->sidedef, heightVertices[0], heightVertices[1]);
 
 	if (frontsector->GetWallGlow(topglowcolor, bottomglowcolor)) flags |= HWF_GLOW;
 

@@ -1477,6 +1477,11 @@ struct side_t
 	int Index() const { return sidenum; }
 
 	bool IsComplexPolyObj();
+
+	inline FPolyObj* GetPolyObj()
+	{
+		return OwningPoly;
+	}
 };
 
 enum AutomapLineStyle : int
