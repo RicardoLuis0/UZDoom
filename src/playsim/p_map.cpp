@@ -249,16 +249,14 @@ static DVector2 FindRefPoint(line_t *ld, const DVector2 &pos)
 			!ld->frontsector->PortalBlocksMovement(sector_t::ceiling) ||
 			!ld->frontsector->PortalBlocksMovement(sector_t::floor))
 	{
-
 		DVector2 v1 = ld->v1->fPos();
 		DVector2 d = ld->Delta();
 		double r = clamp(((pos.X - v1.X) * d.X + (pos.Y - v1.Y) * d.Y) / (d.X*d.X + d.Y*d.Y), 0., 1.);
 		DVector2 point = v1 + d*r;
 		
-		if((ld->sidedef[0]->Flags & WALLF_POLYOBJ) && (ld->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		if(ld->IsComplexPolyObj())
 		{
-			FPolyObj *po = ld->sidedef[0]->OwningPoly;
-			point = po->AnchorSpot.pos + po->CalcAnchorOffset(point - po->StartSpot.pos);
+			point = ld->GetPolyObj()->CalcLocalOffset(point);
 		}
 
 		return point;

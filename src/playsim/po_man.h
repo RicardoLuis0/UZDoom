@@ -122,7 +122,7 @@ struct FPolyObj
 	{
 		return AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
 	}
-
+	
 private:
 
 	void ThrustMobj (AActor *actor, side_t *side);

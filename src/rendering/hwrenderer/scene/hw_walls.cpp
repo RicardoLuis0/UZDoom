@@ -2094,7 +2094,7 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	sector_t * ff_frontsector = frontsector;
 	sector_t * ff_backsector = backsector;
 
-	bool complex_poly = (seg->sidedef->Flags & WALLF_POLYOBJ && seg->sidedef->OwningPoly->flags & POLYF_CARRYING);
+	bool complex_poly = seg->sidedef->IsComplexPolyObj();
 
 	if ((seg->sidedef->Flags & WALLF_POLYOBJ) && seg->backsector)
 	{
@@ -2186,8 +2186,8 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 		FPolyObj * po = seg->sidedef->OwningPoly;
 
 		// Render polyobject slope heights properly
-		heightVertices[0] = po->AnchorSpot.pos + po->CalcAnchorOffset(heightVertices[0] - po->StartSpot.pos);
-		heightVertices[1] = po->AnchorSpot.pos + po->CalcAnchorOffset(heightVertices[1] - po->StartSpot.pos);
+		heightVertices[0] = po->CalcLocalOffset(heightVertices[0]);
+		heightVertices[1] = po->CalcLocalOffset(heightVertices[1]);
 	}
 
 

@@ -703,6 +703,38 @@ bool EV_StopPoly(FLevelLocals *Level, int polynum)
 
 
 
+
+
+
+//==========================================================================
+//
+// 
+//
+//==========================================================================
+
+
+
+bool side_t::IsComplexPolyObj()
+{
+	return (Flags & WALLF_POLYOBJ) && (OwningPoly->flags & POLYF_CARRYING);
+}
+
+bool line_t::IsComplexPolyObj()
+{
+	return (sidedef[0]->Flags & WALLF_POLYOBJ) && (sidedef[0]->OwningPoly->flags & POLYF_CARRYING);
+}
+
+bool sector_t::IsComplexPolyObj()
+{
+	return (Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING);
+}
+
+FPolyObj * sector_t::GetPolyObj()
+{
+	return Lines[0]->sidedef[0]->OwningPoly;
+}
+
+
 //==========================================================================
 //
 // 

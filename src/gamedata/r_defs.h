@@ -1161,6 +1161,9 @@ public:
 	float GetReflect(int pos) { return gl_plane_reflection_i ? reflect[pos] : 0; }
 	FSectorPortalGroup *GetPortalGroup(int plane) { return portals[plane]; }
 
+	bool IsComplexPolyObj();
+	
+	FPolyObj * GetPolyObj();
 };
 
 struct ReverbContainer;
@@ -1472,6 +1475,8 @@ struct side_t
 	vertex_t *V2() const;
 
 	int Index() const { return sidenum; }
+
+	bool IsComplexPolyObj();
 };
 
 enum AutomapLineStyle : int
@@ -1550,6 +1555,15 @@ struct line_t : public linebase_t
 	inline bool hitSkyWall(AActor* mo) const;
 
 	int Index() const { return linenum; }
+
+
+
+	bool IsComplexPolyObj();
+
+	inline FPolyObj* GetPolyObj()
+	{
+		return sidedef[0]->OwningPoly;
+	}
 };
 
 inline vertex_t *side_t::V1() const

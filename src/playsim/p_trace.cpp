@@ -300,15 +300,14 @@ void FTraceInfo::Setup3DFloors()
 		double sdist = MaxDist * startfrac;
 		DVector3 pos = Start + Vec * sdist;
 
-		FPolyObj *poCur = nullptr;
 		DVector2 heightHit = pos.XY();
 		DVector2 heightHitStart = Start.XY();
 
-		if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		if(CurSector->Lines[0]->IsComplexPolyObj())
 		{
-			poCur = CurSector->Lines[0]->sidedef[0]->OwningPoly;
-			heightHit = poCur->CalcLocalOffset(heightHit);
-			heightHitStart = poCur->CalcLocalOffset(heightHitStart);
+			FPolyObj *po = CurSector->Lines[0]->GetPolyObj();
+			heightHit = po->CalcLocalOffset(heightHit);
+			heightHitStart = po->CalcLocalOffset(heightHitStart);
 		}
 
 		double bf = CurSector->floorplane.ZatPoint(heightHit);
@@ -802,26 +801,25 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 		double dist = MaxDist * in->frac;
 		DVector3 hit = Start + Vec * dist;
 
-		FPolyObj *po = nullptr;
 		DVector2 heightHit = hit.XY();
 
-		if((in->d.line->sidedef[0]->Flags & WALLF_POLYOBJ) && (in->d.line->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		if(in->d.line->IsComplexPolyObj())
 		{
-			po = in->d.line->sidedef[0]->OwningPoly;
+			FPolyObj *po = in->d.line->GetPolyObj();
 			heightHit = po->CalcLocalOffset(heightHit);
 		}
 
-		FPolyObj *poCur = nullptr;
 		DVector2 heightHitCur = hit.XY();
 		DVector2 heightHitPos = Results->HitPos.XY();
 		DVector2 heightHitStart = Start.XY();
 
-		if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+		if(CurSector->IsComplexPolyObj())
 		{
-			poCur = CurSector->Lines[0]->sidedef[0]->OwningPoly;
-			heightHitCur = poCur->CalcLocalOffset(heightHitCur);
-			heightHitPos = poCur->CalcLocalOffset(heightHitPos);
-			heightHitStart = poCur->CalcLocalOffset(heightHitStart);
+			FPolyObj *po = CurSector->GetPolyObj();
+
+			heightHitCur = po->CalcLocalOffset(heightHitCur);
+			heightHitPos = po->CalcLocalOffset(heightHitPos);
+			heightHitStart = po->CalcLocalOffset(heightHitStart);
 		}
 
 		// Deal with splashes in 3D floors (but only run once per sector, not each iteration - and stop if something was found.)
@@ -895,13 +893,12 @@ bool FTraceInfo::TraceTraverse (int ptflags)
 		}
 	}
 
-	FPolyObj *po = nullptr;
 	DVector2 heightHitCur = Results->HitPos.XY();
 	DVector2 heightHitStart = Start.XY();
 
-	if((CurSector->Lines[0]->sidedef[0]->Flags & WALLF_POLYOBJ) && (CurSector->Lines[0]->sidedef[0]->OwningPoly->flags & POLYF_CARRYING))
+	if(CurSector->Lines[0]->IsComplexPolyObj())
 	{
-		po = CurSector->Lines[0]->sidedef[0]->OwningPoly;
+		FPolyObj *po = CurSector->Lines[0]->GetPolyObj();
 		heightHitCur = po->CalcLocalOffset(heightHitCur);
 		heightHitStart = po->CalcLocalOffset(heightHitStart);
 	}
