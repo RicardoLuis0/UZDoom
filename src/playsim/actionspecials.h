@@ -1,5 +1,5 @@
 // special name, special number, min script args, max script args, num args on a line
-DEFINE_SPECIAL(Polyobj_StartLine, 1, -1, -1, 4)
+DEFINE_SPECIAL(Polyobj_StartLine, 1, -1, -1, 5)
 DEFINE_SPECIAL(Polyobj_RotateLeft, 2, 3, 3, 3)
 DEFINE_SPECIAL(Polyobj_RotateRight, 3, 3, 3, 3)
 DEFINE_SPECIAL(Polyobj_Move, 4, 4, 4, 4)

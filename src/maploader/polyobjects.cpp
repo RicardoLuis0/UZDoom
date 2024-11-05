@@ -68,8 +68,22 @@ void MapLoader::InitPolyBlockMap ()
 // polyobject so that they can be initialized fast.
 //==========================================================================
 
-void MapLoader::InitSideLists ()
+void MapLoader::InitSideLists()
 {
+	// relatively slow method of ensuring unique entries, but only runs once on map load per Polyobj_StartLine line, so it's fine
+	for(line_t &line : Level->lines)
+	{
+		if(line.special == Polyobj_StartLine && (line.args[4] & POLYF_CARRYING))
+		{
+			int tag = line.args[0];
+
+			if(PolySectors[tag].Find(line.backsector) == PolySectors[tag].Size())
+			{
+				PolySectors[tag].Push(line.backsector);
+			}
+		}
+	}
+
 	auto &sides = Level->sides;
 	for (unsigned i = 0; i < sides.Size(); ++i)
 	{
@@ -192,8 +206,12 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 			}
 			else
 			{
+				po->Sectors = PolySectors[tag];
+
+
 				sd->linedef->special = 0;
 				sd->linedef->args[0] = 0;
+
 				IterFindPolySides(&Level->Polyobjects[index], sd);
 				po->MirrorNum = sd->linedef->args[1];
 				po->crush = SetPolyobjDamage(type,damage);
@@ -201,7 +219,7 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 
 				po->tag = tag;
 				po->seqType = sd->linedef->args[2];
-				po->flags = sd->linedef->args[3];
+				po->flags = sd->linedef->args[4];
 
 				if(sd->linedef->sidedef[1] == nullptr && (po->flags & POLYF_CARRYING))
 				{
@@ -352,6 +370,12 @@ void MapLoader::TranslateToStartSpot (int tag, const DVector2 &origin)
 		po->Sidedefs[i]->Flags |= WALLF_POLYOBJ;
 		po->Sidedefs[i]->OwningPoly = po;
 	}
+
+	for(unsigned i = 0; i < po->Sectors.Size(); i++)
+	{
+		po->Sectors[i]->po = po;
+	}
+
 	for (unsigned i = 0; i < po->Linedefs.Size(); i++)
 	{
 		po->Linedefs[i]->bbox[BOXTOP] -= delta.Y;
@@ -398,10 +422,11 @@ void MapLoader::PO_Init (void)
 
 	int polyIndex;
 
+	Level->Polyobjects.Resize(NumPolyobjs);
+
 	// [RH] Make this faster
 	InitSideLists ();
 
-	Level->Polyobjects.Resize(NumPolyobjs);
 	for (auto &po : Level->Polyobjects) po.Level = Level;	// must be done before the init loop below.
 
 	polyIndex = 0; // index polyobj number

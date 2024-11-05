@@ -782,6 +782,8 @@ struct sector_t
 	int	healthceilinggroup;
 	int	health3dgroup;
 
+	FPolyObj * po;
+
 	// Member functions
 
 private:
@@ -1565,10 +1567,7 @@ struct line_t : public linebase_t
 
 	bool IsComplexPolyObj();
 
-	inline FPolyObj* GetPolyObj()
-	{
-		return sidedef[0]->OwningPoly;
-	}
+	FPolyObj* GetPolyObj();
 };
 
 inline vertex_t *side_t::V1() const

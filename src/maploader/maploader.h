@@ -128,6 +128,7 @@ private:
 	TMap<int, EDMapthing> EDThings;
 
 	// Polyobject init
+	TMap<int32_t, TArray<sector_t*>> PolySectors;
 	TArray<int32_t> KnownPolySides;
 
 	FName CheckCompatibility(MapData *map);

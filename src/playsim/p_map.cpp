@@ -343,20 +343,33 @@ static bool PIT_FindFloorCeiling(FMultiBlockLinesIterator &mit, FMultiBlockLines
 //hijacking this off of the vm
 extern void Vec2Diff(FLevelLocals *Level, double x1, double y1, double x2, double y2, DVector2 *result);
 
-bool isPointInsidePoly(FLevelLocals * Level, FPolyObj * poly, DVector2 &pos)
+sector_t * isPointInsidePoly(FLevelLocals * Level, FPolyObj * poly, DVector2 &pos)
 {
-	for(auto * line : poly->Linedefs)
+	for(auto * sector : poly->Sectors)
 	{
-		if(!P_PointOnLineSidePrecise(pos, line))
+		bool ok = true;
+		for(auto * line : sector->Lines)
 		{
-			return false;
+			int side = P_PointOnLineSidePrecise(pos, line);
+
+			if(side >= 0)
+			{
+				if((side ? line->backsector : line->frontsector) != sector)
+				{
+					ok = false;
+					break;
+				}
+			}
+		}
+
+		if(ok)
+		{
+			pos = poly->CalcLocalOffset(pos);
+			return sector;
 		}
 	}
-
-	pos = poly->CalcLocalOffset(pos);
-	return true;
-
-	//return Level->PointInSector(pos) == poly->Linedefs[0]->backsector;
+	
+	return nullptr;
 }
 
 #define POLY_ITERATE(thing, pos, ...)\
@@ -369,9 +382,9 @@ bool isPointInsidePoly(FLevelLocals * Level, FPolyObj * poly, DVector2 &pos)
 		if(poly->flags & POLYF_CARRYING)\
 		{\
 			DVector2 polyPos = pos.XY();\
-			sector_t * polySector = poly->Linedefs[0]->backsector;\
+			sector_t * polySector = isPointInsidePoly(thing->Level, poly, polyPos);\
 			\
-			if(isPointInsidePoly(thing->Level, poly, polyPos)) \
+			if(polySector) \
 			{\
 				__VA_ARGS__ \
 			}\
@@ -919,6 +932,8 @@ static int LineIsBelow(line_t *line, AActor *actor)
 static // killough 3/26/98: make static
 bool PIT_CheckLine(FMultiBlockLinesIterator &mit, FMultiBlockLinesIterator::CheckResult &cres, const FBoundingBox &box, FCheckPosition &tm, const bool wasfit)
 {
+	//TODO make it work with poly slopes
+
 	line_t *ld = cres.line;
 	bool rail = false;
 
@@ -2398,6 +2413,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 	oldz = thing->Z();
 	if (onfloor)
 	{
+		//Printf(PRINT_NOTIFY | PRINT_BOLD, "onfloor SetZ onfloor_sec = %s\n", (onfloor_sec ? "NULL" : "NONNULL"));
 		thing->SetZ(onfloor->ZatPoint(FPolyObj::ComplexCalcLocalOffset(onfloor_sec, pos)));
 	}
 	thing->flags6 |= MF6_INTRYMOVE;
@@ -3459,7 +3475,6 @@ static const secplane_t * P_CheckSlopeWalkReal(AActor * actor, DVector2 &move, s
 			const secplane_t * walkplane = P_CheckSlopeWalkReal(actor, move, walksec, polySector, false);
 			if(walkplane)
 			{
-				//Printf(PRINT_NOTIFY | PRINT_BOLD, "move = (%f, %f)\n", move.X, move.Y);
 				walksec = polySector;
 				return walkplane;
 			}

@@ -73,6 +73,7 @@ enum EPolyObjFlags
 struct FPolyObj
 {
 	FLevelLocals			*Level;
+	TArray<sector_t *>		Sectors;
 	TArray<side_t *>		Sidedefs;
 	TArray<line_t *>		Linedefs;
 	TArray<vertex_t *>		Vertices;

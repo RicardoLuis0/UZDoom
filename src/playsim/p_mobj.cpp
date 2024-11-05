@@ -2189,7 +2189,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 
 		// killough 3/15/98: Allow objects to drop off
 		// [RH] If walking on a slope, stay on the slope
-		if (!P_TryMove (mo, ptry, true, walkplane, tm, walksec))
+		if (!P_TryMove (mo, ptry, true, walkplane, tm, false, walksec))
 		{
 			// blocked move
 			AActor *BlockingMobj = mo->BlockingMobj;
@@ -2273,7 +2273,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 					DVector2 t;
 					t.X = 0, t.Y = onestep.Y;
 					walkplane = P_CheckSlopeWalk (mo, t, walksec);
-					if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, walksec))
+					if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, false, walksec))
 					{
 						mo->Vel.X = 0;
 					}
@@ -2281,7 +2281,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 					{
 						t.X = onestep.X, t.Y = 0;
 						walkplane = P_CheckSlopeWalk (mo, t, walksec);
-						if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, walksec))
+						if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, false, walksec))
 						{
 							mo->Vel.Y = 0;
 						}
