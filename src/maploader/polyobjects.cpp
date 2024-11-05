@@ -304,12 +304,20 @@ void MapLoader::SpawnPolyobj (int index, int tag, int type, int damage)
 //
 //==========================================================================
 
-DVector2 FPolyObj::CalcAnchorOffset(DVector2 StartSpotOffset)
+DVector2 FPolyObj::RotOffset(DVector2 Offset)
 {
 	float sin = Angle.Sin();
 	float cos = Angle.Cos();
 
-	return DVector2(StartSpotOffset.X * cos + StartSpotOffset.Y * sin, StartSpotOffset.Y * cos + StartSpotOffset.X * sin);
+	return DVector2(Offset.X * cos + Offset.Y * sin, Offset.Y * cos + Offset.X * sin);
+}
+
+DVector2 FPolyObj::UnRotOffset(DVector2 Offset)
+{
+	float sin = (-Angle).Sin();
+	float cos = (-Angle).Cos();
+
+	return DVector2(Offset.X * cos + Offset.Y * sin, Offset.Y * cos + Offset.X * sin);
 }
 
 //==========================================================================

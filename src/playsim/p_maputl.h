@@ -211,6 +211,7 @@ private:
 	TArray<uint16_t> data;
 };
 
+void P_FindPolyObjsInBounds(FLevelLocals * l, FBoundingBox bbox, TArray<FPolyObj*> &out);
 void P_FindPolyObjsInRadius(FLevelLocals * l, DVector3 pos, double radius, TArray<FPolyObj*> &out);
 
 class FBlockPolyObjIterator
@@ -385,11 +386,10 @@ public:
 };
 
 
-
 class FPathTraverse
 {
 protected:
-	static TArray<intercept_t> intercepts;
+	static TArray<intercept_t> intercepts; // this is iffy, but i guess it's to save on memory allocations?
 
 	FLevelLocals *Level;
 	divline_t trace;
@@ -439,10 +439,10 @@ typedef bool(*traverser_t) (intercept_t *in);
 int P_AproxDistance (int dx, int dy);
 double P_InterceptVector(const divline_t *v2, const divline_t *v1);
 
-#define PT_ADDLINES 	1
-#define PT_ADDTHINGS	2
-#define PT_COMPATIBLE	4
-#define PT_DELTA		8		// x2,y2 is passed as a delta, not as an endpoint
+#define PT_ADDLINES 			1
+#define PT_ADDTHINGS			2
+#define PT_COMPATIBLE			4
+#define PT_DELTA				8		// x2,y2 is passed as a delta, not as an endpoint
 
 int BoxOnLineSide(const FBoundingBox& box, const line_t* ld);
 

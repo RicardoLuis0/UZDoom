@@ -1073,6 +1073,7 @@ enum EFindFloorCeiling
 	FFCF_NOCEILING = 64,
 	FFCF_RESTRICTEDPORTAL = 128,	// current values in the iterator's return are through a restricted portal type (i.e. some features are blocked.)
 	FFCF_NODROPOFF = 256,			// Caller does not need a dropoff (saves some time when checking portals)
+	FFCF_NOPOLYOBJ = 512,			// Skip polyobj check
 };
 
 enum ERaise

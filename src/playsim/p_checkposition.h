@@ -23,8 +23,10 @@ struct FCheckPosition
 	FTextureID		floorpic;
 	int				floorterrain;
 	sector_t		*floorsector;
+	FPolyObj		*floorpoly;
 	FTextureID		ceilingpic;
 	sector_t		*ceilingsector;
+	FPolyObj		*ceilingpoly;
 	bool			touchmidtex;
 	bool			abovemidtex;
 	bool			floatok;

@@ -582,7 +582,12 @@ void AActor::SetOrigin(double x, double y, double z, bool moving)
 
 void P_FindPolyObjsInRadius(FLevelLocals * l, DVector3 pos, double radius, TArray<FPolyObj*> &out)
 {
-	FBoundingBox bbox(pos.X, pos.Y, radius);
+	P_FindPolyObjsInBounds(l, FBoundingBox(pos.X, pos.Y, radius), out);
+}
+
+void P_FindPolyObjsInBounds(FLevelLocals * l, FBoundingBox bbox, TArray<FPolyObj*> &out)
+{
+	out.Clear();
 	FBlockPolyObjIterator it(l, bbox);
 
 	FPolyObj * poly;
@@ -1543,6 +1548,7 @@ void FPathTraverse::init(double x1, double y1, double x2, double y2, int flags, 
 		trace.dx = x2 - x1;
 		trace.dy = y2 - y1;
 	}
+
 	if (startfrac > 0)
 	{
 		double startdx = trace.dx * startfrac;

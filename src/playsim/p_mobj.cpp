@@ -1553,6 +1553,8 @@ void DActorModelData::OnDestroy()
 
 void P_ExplodeMissile (AActor *mo, line_t *line, AActor *target, bool onsky, FName damageType)
 {
+	//TODO make it work with poly slopes
+	
 	// [ZZ] line damage callback
 	if (line)
 	{
@@ -2020,6 +2022,10 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 	double Oldfloorz = mo->floorz;
 	double oldz = mo->Z();
 
+
+	double vx = mo->Vel.X;
+	double vy = mo->Vel.Y;
+
 	double maxmove = (mo->waterlevel < 1) || (mo->flags & MF_MISSILE) || 
 					  (mo->player && mo->player->crouchoffset<-10) ? MAXMOVE : MAXMOVE/4;
 
@@ -2112,7 +2118,8 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 
 	// [RH] Adjust player movement on sloped floors
 	DVector2 startmove = move;
-	walkplane = P_CheckSlopeWalk (mo, move);
+	sector_t * walksec = nullptr;
+	walkplane = P_CheckSlopeWalk (mo, move, walksec);
 
 	// [RH] Take smaller steps when moving faster than the object's size permits.
 	// Moving as fast as the object's "diameter" is bad because it could skip
@@ -2182,7 +2189,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 
 		// killough 3/15/98: Allow objects to drop off
 		// [RH] If walking on a slope, stay on the slope
-		if (!P_TryMove (mo, ptry, true, walkplane, tm))
+		if (!P_TryMove (mo, ptry, true, walkplane, tm, walksec))
 		{
 			// blocked move
 			AActor *BlockingMobj = mo->BlockingMobj;
@@ -2194,9 +2201,12 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 				int hitpart = -1;
 				sector_t* hitsector = nullptr;
 				secplane_t* hitplane = nullptr;
-				if (tm.ceilingsector && mo->Z() + mo->Height > tm.ceilingsector->ceilingplane.ZatPoint(tm.pos.XY()))
+
+				DVector2 checkHeightPos = FPolyObj::ComplexCalcLocalOffset(walksec, tm.pos.XY());
+
+				if (tm.ceilingsector && mo->Z() + mo->Height > tm.ceilingsector->ceilingplane.ZatPoint(checkHeightPos))
 					mo->BlockingCeiling = tm.ceilingsector;
-				if (tm.floorsector && mo->Z() < tm.floorsector->floorplane.ZatPoint(tm.pos.XY()))
+				if (tm.floorsector && mo->Z() < tm.floorsector->floorplane.ZatPoint(checkHeightPos))
 					mo->BlockingFloor = tm.floorsector;
 				// the following two only set the appropriate field - to avoid issues caused by running actions right in the middle of XY movement
 				P_CheckFor3DFloorHit(mo, mo->floorz, false);
@@ -2248,7 +2258,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 							{
 								move = mo->Vel.XY();
 								onestep = move / steps;
-								P_CheckSlopeWalk (mo, move);
+								walkplane = P_CheckSlopeWalk (mo, move, walksec);
 							}
 							start = mo->Pos().XY() - move * step / steps;
 						}
@@ -2262,16 +2272,16 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 				{ // slide against another actor
 					DVector2 t;
 					t.X = 0, t.Y = onestep.Y;
-					walkplane = P_CheckSlopeWalk (mo, t);
-					if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm))
+					walkplane = P_CheckSlopeWalk (mo, t, walksec);
+					if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, walksec))
 					{
 						mo->Vel.X = 0;
 					}
 					else
 					{
 						t.X = onestep.X, t.Y = 0;
-						walkplane = P_CheckSlopeWalk (mo, t);
-						if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm))
+						walkplane = P_CheckSlopeWalk (mo, t, walksec);
+						if (P_TryMove (mo, mo->Pos().XY() + t, true, walkplane, tm, walksec))
 						{
 							mo->Vel.Y = 0;
 						}
@@ -2429,7 +2439,9 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 	{ // Don't stop sliding if halfway off a step with some velocity
 		if (fabs(mo->Vel.X) > 0.25 || fabs(mo->Vel.Y) > 0.25)
 		{
-			if (mo->floorz > mo->Sector->floorplane.ZatPoint(mo))
+			DVector2 moHeightPos = FPolyObj::ComplexCalcLocalOffset(walksec, mo->Pos().XY());
+
+			if (mo->floorz > mo->Sector->floorplane.ZatPoint(moHeightPos))
 			{
 				if (mo->dropoffz != mo->floorz) // 3DMidtex or other special cases that must be excluded
 				{
@@ -2440,7 +2452,7 @@ static double P_XYMovement (AActor *mo, DVector2 scroll)
 						// if the floor comes from one in the current sector stop sliding the corpse!
 						F3DFloor * rover=mo->Sector->e->XFloor.ffloors[i];
 						if (!(rover->flags&FF_EXISTS)) continue;
-						if (rover->flags&FF_SOLID && rover->top.plane->ZatPoint(mo) == mo->floorz) break;
+						if (rover->flags&FF_SOLID && rover->top.plane->ZatPoint(moHeightPos) == mo->floorz) break;
 					}
 					if (i==mo->Sector->e->XFloor.ffloors.Size()) 
 						return Oldfloorz;
@@ -2543,6 +2555,7 @@ static void P_MonsterFallingDamage (AActor *mo)
 
 static void P_ZMovement (AActor *mo, double oldfloorz)
 {
+	//TODO make it work with poly slopes
 	double dist;
 	double delta;
 	double oldz = mo->Z();
@@ -2790,6 +2803,8 @@ static void P_ZMovement (AActor *mo, double oldfloorz)
 
 void P_CheckFakeFloorTriggers (AActor *mo, double oldz, bool oldz_has_viewheight)
 {
+	//TODO make it work with poly slopes
+
 	if (mo->player && (mo->player->cheats & CF_PREDICTING))
 	{
 		return;
@@ -3857,6 +3872,8 @@ DEFINE_ACTION_FUNCTION(AActor, CheckPortalTransition)
 //
 void AActor::Tick ()
 {
+	//TODO make it work with poly slopes
+	
 	// [RH] Data for Heretic/Hexen scrolling sectors
 	static const int8_t HexenCompatSpeeds[] = {-25, 0, -10, -5, 0, 5, 10, 0, 25 };
 	static const int8_t HexenScrollies[24][2] =
@@ -4534,6 +4551,8 @@ DEFINE_ACTION_FUNCTION(AActor, CheckNoDelay)
 
 void AActor::CheckSectorTransition(sector_t *oldsec)
 {
+	//TODO make it work with poly slopes
+
 	if (oldsec != Sector)
 	{
 		if (oldsec->SecActTarget != NULL)
@@ -4582,6 +4601,8 @@ void AActor::CheckSectorTransition(sector_t *oldsec)
 
 static double UpdateWaterDepth(AActor* actor, bool splash)
 {
+	//TODO make it work with poly slopes
+
 	double fh = -FLT_MAX;
 	bool reset = false;
 
@@ -4746,6 +4767,8 @@ DEFINE_ACTION_FUNCTION(AActor, UpdateWaterLevel)
 
 void ConstructActor(AActor *actor, const DVector3 &pos, bool SpawningMapThing)
 {
+	//TODO make it work with poly slopes
+
 	auto Level = actor->Level;
 	actor->SpawnTime = Level->totaltime;
 	actor->SpawnOrder = Level->spawnindex++;
@@ -5264,6 +5287,8 @@ void AActor::OnDestroy ()
 
 void AActor::AdjustFloorClip ()
 {
+	//TODO make it work with poly slopes
+
 	if (flags3 & MF3_SPECIALFLOORCLIP)
 	{
 		return;
@@ -6639,6 +6664,8 @@ enum HitWaterFlags
 
 bool P_HitWater (AActor * thing, sector_t * sec, const DVector3 &pos, bool checkabove, bool alert, bool force, int flags)
 {
+	//TODO make it work with poly slopes
+
 	if (thing->player && (thing->player->cheats & CF_PREDICTING))
 		return false;
 
@@ -6810,6 +6837,8 @@ DEFINE_ACTION_FUNCTION(AActor, HitWater)
 
 bool P_HitFloor (AActor *thing)
 {
+	//TODO make it work with poly slopes
+
 	const msecnode_t *m;
 
 	// killough 11/98: touchy objects explode on impact
@@ -7960,6 +7989,8 @@ static FRandom pr_restore("RestorePos");
 
 void AActor::RestoreSpecialPosition()
 {
+	//TODO make it work with poly slopes
+
 	// Move item back to its original location
 	DVector2 sp = SpawnPoint.XY();
 

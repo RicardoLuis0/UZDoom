@@ -116,16 +116,22 @@ struct FPolyObj
 	void UpdateLinks();
 	static void ClearAllSubsectorLinks();
 
-	DVector2 CalcAnchorOffset(DVector2 StartSpotOffset);
+	DVector2 RotOffset(DVector2 Offset);
+	DVector2 UnRotOffset(DVector2 Offset);
 
 	inline DVector2 CalcLocalOffset(DVector2 pos)
 	{
-		return AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
+		return AnchorSpot.pos + RotOffset(pos - StartSpot.pos);
+	}
+
+	inline DVector2 UnRotAnchorOffset(DVector2 pos)
+	{
+		return StartSpot.pos + UnRotOffset(pos - AnchorSpot.pos);
 	}
 
 	inline void ToLocalOffset(DVector2 &pos)
 	{
-		pos = AnchorSpot.pos + CalcAnchorOffset(pos - StartSpot.pos);
+		pos = AnchorSpot.pos + RotOffset(pos - StartSpot.pos);
 	}
 
 	template<typename... T>
@@ -137,18 +143,78 @@ struct FPolyObj
 	template<typename T, typename... V>
 	static inline void ComplexToLocalOffsets(T &ref, V&... pos)
 	{
-		if(ref->IsComplexPolyObj())
+		if constexpr(std::is_pointer_v<T>)
 		{
-			ref->GetPolyObj()->ToLocalOffsets(pos...);
+			if(ref && ref->IsComplexPolyObj())
+			{
+				ref->GetPolyObj()->ToLocalOffsets(pos...);
+			}
+		}
+		else
+		{
+			if(ref.IsComplexPolyObj())
+			{
+				ref.GetPolyObj()->ToLocalOffsets(pos...);
+			}
 		}
 	}
 
 	template<typename T>
 	static inline DVector2 ComplexCalcLocalOffset(T &ref, DVector2 pos)
 	{
-		if(ref->IsComplexPolyObj())
+		if constexpr(std::is_pointer_v<T>)
 		{
-			return ref->GetPolyObj()->CalcLocalOffset(pos);
+			if(ref && ref->IsComplexPolyObj())
+			{
+				return ref->GetPolyObj()->CalcLocalOffset(pos);
+			}
+		}
+		else
+		{
+			if(ref.IsComplexPolyObj())
+			{
+				return ref.GetPolyObj()->CalcLocalOffset(pos);
+			}
+		}
+		return pos;
+	}
+
+	template<typename T>
+	static inline DVector2 ComplexUnRotAnchorOffset(T &ref, DVector2 pos)
+	{
+		if constexpr(std::is_pointer_v<T>)
+		{
+			if(ref && ref->IsComplexPolyObj())
+			{
+				return ref->GetPolyObj()->UnRotAnchorOffset(pos);
+			}
+		}
+		else
+		{
+			if(ref.IsComplexPolyObj())
+			{
+				return ref.GetPolyObj()->UnRotAnchorOffset(pos);
+			}
+		}
+		return pos;
+	}
+
+	template<typename T>
+	static inline DVector2 ComplexRotOffset(T &ref, DVector2 pos)
+	{
+		if constexpr(std::is_pointer_v<T>)
+		{
+			if(ref && ref->IsComplexPolyObj())
+			{
+				return ref->GetPolyObj()->RotOffset(pos);
+			}
+		}
+		else
+		{
+			if(ref.IsComplexPolyObj())
+			{
+				return ref.GetPolyObj()->RotOffset(pos);
+			}
 		}
 		return pos;
 	}

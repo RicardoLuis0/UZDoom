@@ -340,9 +340,77 @@ static bool PIT_FindFloorCeiling(FMultiBlockLinesIterator &mit, FMultiBlockLines
 //
 //==========================================================================
 
+//hijacking this off of the vm
+extern void Vec2Diff(FLevelLocals *Level, double x1, double y1, double x2, double y2, DVector2 *result);
+
+bool isPointInsidePoly(FLevelLocals * Level, FPolyObj * poly, DVector2 &pos)
+{
+	for(auto * line : poly->Linedefs)
+	{
+		if(!P_PointOnLineSidePrecise(pos, line))
+		{
+			return false;
+		}
+	}
+
+	pos = poly->CalcLocalOffset(pos);
+	return true;
+
+	//return Level->PointInSector(pos) == poly->Linedefs[0]->backsector;
+}
+
+#define POLY_ITERATE(thing, pos, ...)\
+	TArray<FPolyObj*> polys;\
+	\
+	P_FindPolyObjsInRadius(thing->Level, pos, thing->radius, polys);\
+	\
+	for(FPolyObj * poly : polys)\
+	{\
+		if(poly->flags & POLYF_CARRYING)\
+		{\
+			DVector2 polyPos = pos.XY();\
+			sector_t * polySector = poly->Linedefs[0]->backsector;\
+			\
+			if(isPointInsidePoly(thing->Level, poly, polyPos)) \
+			{\
+				__VA_ARGS__ \
+			}\
+		}\
+	}
+
+template<auto func, typename... Args>
+void P_GetFloorCeilingZPolyCheck(FCheckPosition &tmf, int flags, Args... args)
+{
+	POLY_ITERATE(tmf.thing, tmf.pos,
+	{
+		FCheckPosition polycheck = tmf;
+		polycheck.pos = DVector3(polyPos, tmf.pos.Z);
+		polycheck.sector = polySector;
+
+		func(polycheck, flags | FFCF_NOPOLYOBJ | FFCF_SAMESECTOR | FFCF_NOPORTALS, args...);
+
+		if(polycheck.ceilingz < tmf.ceilingz)
+		{
+			tmf.ceilingsector = polycheck.ceilingsector;
+			tmf.ceilingpoly = poly;
+			tmf.ceilingz = polycheck.ceilingz;
+			tmf.ceilingpic = polycheck.ceilingpic;
+		}
+
+		if(polycheck.floorz > tmf.floorz)
+		{
+			tmf.floorsector = polycheck.floorsector;
+			tmf.floorpoly = poly;
+			tmf.dropoffz = tmf.floorz = polycheck.floorz;
+			tmf.floorterrain = polycheck.floorterrain;
+			tmf.floorpic = polycheck.floorpic;
+		}
+	});
+}
+
 void P_GetFloorCeilingZ(FCheckPosition &tmf, int flags)
 {
-	sector_t *sec = (!(flags & FFCF_SAMESECTOR) || tmf.thing->Sector == NULL)? tmf.thing->Level->PointInSector(tmf.pos) : tmf.sector;
+	sector_t *sec = (!(flags & FFCF_SAMESECTOR) || tmf.sector == NULL)? tmf.thing->Level->PointInSector(tmf.pos) : tmf.sector;
 	F3DFloor *ffc, *fff;
 
 	tmf.ceilingz = NextHighestCeilingAt(sec, tmf.pos.X, tmf.pos.Y, tmf.pos.Z, tmf.pos.Z + tmf.thing->Height, flags, &tmf.ceilingsector, &ffc);
@@ -362,6 +430,10 @@ void P_GetFloorCeilingZ(FCheckPosition &tmf, int flags)
 	tmf.ceilingpic = ffc ? *ffc->bottom.texture : tmf.ceilingsector->GetTexture(sector_t::ceiling);
 	tmf.sector = sec;
 
+	if(!(flags & FFCF_NOPOLYOBJ))
+	{
+		P_GetFloorCeilingZPolyCheck<P_GetFloorCeilingZ>(tmf, flags);
+	}
 }
 
 //==========================================================================
@@ -1798,6 +1870,63 @@ MOVEMENT CLIPPING
 //
 //==========================================================================
 
+void P_CheckPositionGetFloorCeilingZ(FCheckPosition &tm, int flags, const DVector2 &pos)
+{
+	sector_t *newsec = tm.sector;
+
+	DVector2 heightPos = pos;
+	FPolyObj::ComplexToLocalOffsets(newsec, heightPos);
+
+	if(!(flags & FFCF_NOPORTALS) && (!newsec->PortalBlocksMovement(sector_t::ceiling) || !newsec->PortalBlocksMovement(sector_t::floor)))
+	{
+		// Use P_GetFloorCeilingZ only if there's portals to consider. Its logic is subtly different than what is needed here for 3D floors.
+		P_GetFloorCeilingZ(tm, FFCF_SAMESECTOR);
+	}
+	else
+	{
+		tm.floorz = tm.dropoffz = newsec->floorplane.ZatPoint(heightPos);
+		tm.dropoffisportal = false;
+		tm.floorpic = newsec->GetTexture(sector_t::floor);
+		tm.ceilingz = newsec->ceilingplane.ZatPoint(heightPos);
+		tm.ceilingpic = newsec->GetTexture(sector_t::ceiling);
+		tm.floorsector = tm.ceilingsector = newsec;
+		tm.floorterrain = newsec->GetTerrain(sector_t::floor);
+	}
+
+	F3DFloor*  rover;
+	double thingtop = tm.thing->Height > 0 ? tm.thing->Top() : tm.thing->Z() + 1;
+
+	for (unsigned i = 0; i<newsec->e->XFloor.ffloors.Size(); i++)
+	{
+		rover = newsec->e->XFloor.ffloors[i];
+		if (!(rover->flags & FF_SOLID) || !(rover->flags & FF_EXISTS)) continue;
+
+		double ff_bottom = rover->bottom.plane->ZatPoint(heightPos);
+		double ff_top = rover->top.plane->ZatPoint(heightPos);
+
+		double delta1 = tm.thing->Z() - (ff_bottom + ((ff_top - ff_bottom) / 2));
+		double delta2 = thingtop - (ff_bottom + ((ff_top - ff_bottom) / 2));
+
+		if (ff_top > tm.floorz && fabs(delta1) < fabs(delta2))
+		{
+			tm.floorz = tm.dropoffz = ff_top;
+			tm.dropoffisportal = false;
+			tm.floorpic = *rover->top.texture;
+			tm.floorterrain = rover->model->GetTerrain(rover->top.isceiling);
+		}
+		if (ff_bottom < tm.ceilingz && fabs(delta1) >= fabs(delta2))
+		{
+			tm.ceilingz = ff_bottom;
+			tm.ceilingpic = *rover->bottom.texture;
+		}
+	}
+
+	if(!(flags & FFCF_NOPOLYOBJ))
+	{
+		P_GetFloorCeilingZPolyCheck<P_CheckPositionGetFloorCeilingZ>(tm, flags, pos);
+	}
+}
+
 bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, bool actorsonly)
 {
 	sector_t *newsec;
@@ -1817,49 +1946,7 @@ bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, boo
 	// Any contacted lines the step closer together will adjust them.
 	if (!thing->IsNoClip2())
 	{
-		if (!newsec->PortalBlocksMovement(sector_t::ceiling) || !newsec->PortalBlocksMovement(sector_t::floor))
-		{
-			// Use P_GetFloorCeilingZ only if there's portals to consider. Its logic is subtly different than what is needed here for 3D floors.
-			P_GetFloorCeilingZ(tm, FFCF_SAMESECTOR);
-		}
-		else
-		{
-			tm.floorz = tm.dropoffz = newsec->floorplane.ZatPoint(pos);
-			tm.dropoffisportal = false;
-			tm.floorpic = newsec->GetTexture(sector_t::floor);
-			tm.ceilingz = newsec->ceilingplane.ZatPoint(pos);
-			tm.ceilingpic = newsec->GetTexture(sector_t::ceiling);
-			tm.floorsector = tm.ceilingsector = newsec;
-			tm.floorterrain = newsec->GetTerrain(sector_t::floor);
-		}
-
-		F3DFloor*  rover;
-		double thingtop = thing->Height > 0 ? thing->Top() : thing->Z() + 1;
-
-		for (unsigned i = 0; i<newsec->e->XFloor.ffloors.Size(); i++)
-		{
-			rover = newsec->e->XFloor.ffloors[i];
-			if (!(rover->flags & FF_SOLID) || !(rover->flags & FF_EXISTS)) continue;
-
-			double ff_bottom = rover->bottom.plane->ZatPoint(pos);
-			double ff_top = rover->top.plane->ZatPoint(pos);
-
-			double delta1 = thing->Z() - (ff_bottom + ((ff_top - ff_bottom) / 2));
-			double delta2 = thingtop - (ff_bottom + ((ff_top - ff_bottom) / 2));
-
-			if (ff_top > tm.floorz && fabs(delta1) < fabs(delta2))
-			{
-				tm.floorz = tm.dropoffz = ff_top;
-				tm.dropoffisportal = false;
-				tm.floorpic = *rover->top.texture;
-				tm.floorterrain = rover->model->GetTerrain(rover->top.isceiling);
-			}
-			if (ff_bottom < tm.ceilingz && fabs(delta1) >= fabs(delta2))
-			{
-				tm.ceilingz = ff_bottom;
-				tm.ceilingpic = *rover->bottom.texture;
-			}
-		}
+		P_CheckPositionGetFloorCeilingZ(tm, 0, pos);
 	}
 	else
 	{
@@ -2296,7 +2383,8 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 	int dropoff, // killough 3/15/98: allow dropoff as option
 	const secplane_t *onfloor, // [RH] Let P_TryMove keep the thing on the floor
 	FCheckPosition &tm,
-	bool missileCheck)	// [GZ] Fired missiles ignore the drop-off test
+	bool missileCheck,
+	sector_t * onfloor_sec)	// [GZ] Fired missiles ignore the drop-off test
 {
 	sector_t	*oldsector;
 	double		oldz;
@@ -2310,7 +2398,7 @@ bool P_TryMove(AActor *thing, const DVector2 &pos,
 	oldz = thing->Z();
 	if (onfloor)
 	{
-		thing->SetZ(onfloor->ZatPoint(pos));
+		thing->SetZ(onfloor->ZatPoint(FPolyObj::ComplexCalcLocalOffset(onfloor_sec, pos)));
 	}
 	thing->flags6 |= MF6_INTRYMOVE;
 	if (!P_CheckPosition(thing, pos, tm))
@@ -2811,10 +2899,10 @@ pushline:
 
 bool P_TryMove(AActor *thing, const DVector2 &pos,
 	int dropoff, // killough 3/15/98: allow dropoff as option
-	const secplane_t *onfloor, bool missilecheck) // [RH] Let P_TryMove keep the thing on the floor
+	const secplane_t *onfloor, bool missilecheck, sector_t * onfloor_sec) // [RH] Let P_TryMove keep the thing on the floor
 {
 	FCheckPosition tm;
-	return P_TryMove(thing, pos, dropoff, onfloor, tm, missilecheck);
+	return P_TryMove(thing, pos, dropoff, onfloor, tm, missilecheck, onfloor_sec);
 }
 
 
@@ -3191,6 +3279,7 @@ void FSlide::SlideMove(AActor *mo, DVector2 tryp, int numsteps)
 	DVector2 newpos;
 	DVector2 move;
 	const secplane_t * walkplane;
+	sector_t * walksector = nullptr;
 	int hitcount;
 
 	hitcount = 3;
@@ -3239,12 +3328,12 @@ retry:
 	stairstep:
 		// killough 3/15/98: Allow objects to drop off ledges
 		move = { 0, tryp.Y };
-		walkplane = P_CheckSlopeWalk(mo, move);
-		if (!P_TryMove(mo, mo->Pos().XY() + move, true, walkplane))
+		walkplane = P_CheckSlopeWalk(mo, move, walksector);
+		if (!P_TryMove(mo, mo->Pos().XY() + move, true, walkplane, false, walksector))
 		{
 			move = { tryp.X, 0 };
-			walkplane = P_CheckSlopeWalk(mo, move);
-			P_TryMove(mo, mo->Pos().XY() + move, true, walkplane);
+			walkplane = P_CheckSlopeWalk(mo, move, walksector);
+			P_TryMove(mo, mo->Pos().XY() + move, true, walkplane, false, walksector);
 		}
 		return;
 	}
@@ -3289,10 +3378,10 @@ retry:
 			mo->player->Vel.Y = mo->Vel.Y;
 	}
 
-	walkplane = P_CheckSlopeWalk(mo, tmmove);
+	walkplane = P_CheckSlopeWalk(mo, tmmove, walksector);
 
 	// killough 3/15/98: Allow objects to drop off ledges
-	if (!P_TryMove(mo, mo->Pos().XY() + tmmove, true, walkplane))
+	if (!P_TryMove(mo, mo->Pos().XY() + tmmove, true, walkplane, false, walksector))
 	{
 		goto retry;
 	}
@@ -3310,23 +3399,31 @@ void P_SlideMove(AActor *mo, const DVector2 &pos, int numsteps)
 //
 //============================================================================
 
-const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
+
+static const secplane_t * P_CheckSlopeWalkReal(AActor * actor, DVector2 &move, sector_t * &walksec, sector_t * secOverride, bool checkPoly)
 {
 	static secplane_t copyplane;
 	if (actor->flags & MF_NOGRAVITY)
 	{
-		return NULL;
+		return nullptr;
 	}
 
-	DVector3 pos = actor->PosRelative(actor->floorsector);
-	const secplane_t *plane = &actor->floorsector->floorplane;
-	double planezhere = plane->ZatPoint(pos);
+	sector_t * sec = secOverride ? secOverride : actor->Sector;
+	sector_t * fsec = secOverride ? secOverride : actor->floorsector;
 
-	for (auto rover : actor->floorsector->e->XFloor.ffloors)
+	DVector3 pos = actor->PosRelative(fsec);
+	const secplane_t *plane = &fsec->floorplane;
+
+	DVector2 posHeight = FPolyObj::ComplexCalcLocalOffset(fsec, pos.XY());
+	DVector2 actorPosHeight = FPolyObj::ComplexCalcLocalOffset(sec, actor->Pos().XY());
+
+	double planezhere = plane->ZatPoint(actorPosHeight);
+
+	for (auto rover : fsec->e->XFloor.ffloors)
 	{
 		if (!(rover->flags & FF_SOLID) || !(rover->flags & FF_EXISTS)) continue;
 
-		double thisplanez = rover->top.plane->ZatPoint(pos);
+		double thisplanez = rover->top.plane->ZatPoint(actorPosHeight);
 
 		if (thisplanez > planezhere && thisplanez <= actor->Z() + actor->MaxStepHeight)
 		{
@@ -3337,13 +3434,13 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 		}
 	}
 
-	if (actor->floorsector != actor->Sector)
+	if (fsec != sec)
 	{
-		for (auto rover : actor->Sector->e->XFloor.ffloors)
+		for (auto rover : sec->e->XFloor.ffloors)
 		{
 			if (!(rover->flags & FF_SOLID) || !(rover->flags & FF_EXISTS)) continue;
 
-			double thisplanez = rover->top.plane->ZatPoint(actor);
+			double thisplanez = rover->top.plane->ZatPoint(actorPosHeight);
 
 			if (thisplanez > planezhere && thisplanez <= actor->Z() + actor->MaxStepHeight)
 			{
@@ -3355,16 +3452,30 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 		}
 	}
 
-	if (actor->floorsector != actor->Sector)
+	if(checkPoly)
+	{
+		POLY_ITERATE(actor, actor->Pos(),
+		{
+			const secplane_t * walkplane = P_CheckSlopeWalkReal(actor, move, walksec, polySector, false);
+			if(walkplane)
+			{
+				//Printf(PRINT_NOTIFY | PRINT_BOLD, "move = (%f, %f)\n", move.X, move.Y);
+				walksec = polySector;
+				return walkplane;
+			}
+		});
+	}
+
+	if (fsec != sec)
 	{
 		// this additional check prevents sliding on sloped dropoffs
-		if (planezhere>actor->floorz + 4)
-			return NULL;
+		if (planezhere > actor->floorz + 4)
+			return nullptr;
 	}
 
 	if (actor->Z() - planezhere > 1)
 	{ // not on floor
-		return NULL;
+		return nullptr;
 	}
 
 	if (plane->isSlope())
@@ -3372,16 +3483,17 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 		DVector2 dest;
 		double t;
 
-		dest = actor->Pos().XY() + move;
+		dest = FPolyObj::ComplexCalcLocalOffset(sec, actor->Pos().XY() + move);
+
 		t = (plane->Normal() | DVector3(dest, actor->Z())) + plane->fD();
 		if (t < 0)
 		{ // Desired location is behind (below) the plane
-			// (i.e. Walking up the plane)
+		  // (i.e. Walking up the plane)
 			if (plane->fC() < actor->MaxSlopeSteepness)
 			{ // Can't climb up slopes of ~45 degrees or more
 				if (actor->flags & MF_NOCLIP)
 				{
-					return (actor->floorsector == actor->Sector) ? plane : NULL;
+					return (fsec == sec) ? plane : nullptr;
 				}
 				else
 				{
@@ -3395,7 +3507,7 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 							sector_t *sec = node->m_sector;
 							if (sec->floorplane.fC() >= actor->MaxSlopeSteepness)
 							{
-								DVector3 pos = actor->PosRelative(sec) +move;
+								DVector2 pos = FPolyObj::ComplexCalcLocalOffset(sec, actor->PosRelative(sec).XY() + move);
 
 								if (sec->floorplane.ZatPoint(pos) >= actor->Z() - actor->MaxStepHeight)
 								{
@@ -3411,14 +3523,14 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 						actor->Vel.X = move.X;
 						actor->Vel.Y = move.Y;
 					}
-					return (actor->floorsector == actor->Sector) ? plane : NULL;
+					return (fsec == sec) ? plane : nullptr;
 				}
 			}
 			// Slide the desired location along the plane's normal
 			// so that it lies on the plane's surface
 			dest -= plane->Normal().XY() * t;
-			move = dest - actor->Pos().XY();
-			return (actor->floorsector == actor->Sector) ? plane : NULL;
+			move = FPolyObj::ComplexRotOffset(sec, dest - actorPosHeight);
+			return (fsec == sec) ? plane : nullptr;
 		}
 		else if (t > 0)
 		{ // Desired location is in front of (above) the plane
@@ -3427,12 +3539,20 @@ const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move)
 				// Actor's current spot is on/in the plane, so walk down it
 				// Same principle as walking up, except reversed
 				dest += plane->Normal().XY() * t;
-				move = dest - actor->Pos().XY();
-				return (actor->floorsector == actor->Sector) ? plane : NULL;
+				move = FPolyObj::ComplexRotOffset(sec, dest - actorPosHeight);
+				return (fsec == sec) ? plane : nullptr;
 			}
 		}
 	}
-	return NULL;
+
+	return nullptr;
+}
+
+
+const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move, sector_t * &walksec)
+{
+	walksec = nullptr;
+	return P_CheckSlopeWalkReal(actor, move, walksec, nullptr, true);
 }
 
 //============================================================================

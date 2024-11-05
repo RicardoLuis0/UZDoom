@@ -1012,17 +1012,25 @@ double NextHighestCeilingAt(sector_t *sec, double x, double y, double bottomz, d
 {
 	double planeheight = -FLT_MAX;
 
+	DVector2 heightPos(x, y);
+
+	if(sec->IsComplexPolyObj())
+	{
+		flags |= FFCF_NOPORTALS; // for now ignore floor/ceiling portals on polys
+		heightPos = sec->GetPolyObj()->CalcLocalOffset(heightPos);
+	}
+
 	while (true)
 	{
 		// Looking through planes from bottom to top
-		double realceil = sec->ceilingplane.ZatPoint(x, y);
+		double realceil = sec->ceilingplane.ZatPoint(heightPos);
 		for (int i = sec->e->XFloor.ffloors.Size() - 1; i >= 0; --i)
 		{
 			F3DFloor *rover = sec->e->XFloor.ffloors[i];
 			if (!(rover->flags & FF_SOLID) || !(rover->flags & FF_EXISTS)) continue;
 
-			double ff_bottom = rover->bottom.plane->ZatPoint(x, y);
-			double ff_top = rover->top.plane->ZatPoint(x, y);
+			double ff_bottom = rover->bottom.plane->ZatPoint(heightPos);
+			double ff_top = rover->top.plane->ZatPoint(heightPos);
 
 			double delta1 = bottomz - (ff_bottom + ((ff_top - ff_bottom) / 2));
 			double delta2 = topz - (ff_bottom + ((ff_top - ff_bottom) / 2));
@@ -1045,6 +1053,9 @@ double NextHighestCeilingAt(sector_t *sec, double x, double y, double bottomz, d
 			DVector2 pos = sec->GetPortalDisplacement(sector_t::ceiling);
 			x += pos.X;
 			y += pos.Y;
+
+			heightPos = DVector2(x, y);
+
 			planeheight = sec->GetPortalPlaneZ(sector_t::ceiling);
 			sec = sec->Level->PointInSector(x, y);
 		}
@@ -1059,6 +1070,15 @@ double NextHighestCeilingAt(sector_t *sec, double x, double y, double bottomz, d
 double NextLowestFloorAt(sector_t *sec, double x, double y, double z, int flags, double steph, sector_t **resultsec, F3DFloor **resultffloor)
 {
 	double planeheight = FLT_MAX;
+
+	DVector2 heightPos(x, y);
+
+	if(sec->IsComplexPolyObj())
+	{
+		flags |= FFCF_NOPORTALS; // for now ignore floor/ceiling portals on polys
+		heightPos = sec->GetPolyObj()->CalcLocalOffset(heightPos);
+	}
+
 	while (true)
 	{
 		// Looking through planes from top to bottom
@@ -1072,8 +1092,8 @@ double NextLowestFloorAt(sector_t *sec, double x, double y, double z, int flags,
 			// either with feet above the 3D floor or feet with less than 'stepheight' map units inside
 			if ((ff->flags & (FF_EXISTS | FF_SOLID)) == (FF_EXISTS | FF_SOLID))
 			{
-				double ffz = ff->top.plane->ZatPoint(x, y);
-				double ffb = ff->bottom.plane->ZatPoint(x, y);
+				double ffz = ff->top.plane->ZatPoint(heightPos);
+				double ffb = ff->bottom.plane->ZatPoint(heightPos);
 
 				if (ffz > realfloor && (z >= ffz || (!(flags & FFCF_3DRESTRICT) && (ffb < z && ffz < z + steph))))
 				{ // This floor is beneath our feet.
@@ -1094,6 +1114,9 @@ double NextLowestFloorAt(sector_t *sec, double x, double y, double z, int flags,
 			DVector2 pos = sec->GetPortalDisplacement(sector_t::floor);
 			x += pos.X;
 			y += pos.Y;
+
+			heightPos = DVector2(x, y);
+
 			planeheight = sec->GetPortalPlaneZ(sector_t::floor);
 			sec = sec->Level->PointInSector(x, y);
 		}

@@ -256,8 +256,8 @@ void P_DoMissileDamage(AActor* inflictor, AActor* target);
 bool P_CheckPosition(AActor *thing, const DVector2 &pos, FCheckPosition &tm, bool actorsonly = false);
 AActor	*P_CheckOnmobj (AActor *thing);
 void	P_FakeZMovement (AActor *mo);
-bool	P_TryMove(AActor* thing, const DVector2 &pos, int dropoff, const secplane_t * onfloor, FCheckPosition &tm, bool missileCheck = false);
-bool	P_TryMove(AActor* thing, const DVector2 &pos, int dropoff, const secplane_t * onfloor = NULL, bool missilecheck = false);
+bool	P_TryMove(AActor* thing, const DVector2 &pos, int dropoff, const secplane_t * onfloor, FCheckPosition &tm, bool missileCheck = false, sector_t * onfloor_sec = nullptr);
+bool	P_TryMove(AActor* thing, const DVector2 &pos, int dropoff, const secplane_t * onfloor = NULL, bool missilecheck = false, sector_t * onfloor_sec = nullptr);
 
 bool P_CheckMove(AActor *thing, const DVector2 &pos, FCheckPosition& tm, int flags);
 bool	P_CheckMove(AActor *thing, const DVector2 &pos, int flags = 0);
@@ -296,6 +296,7 @@ enum
 	FFCF_NOCEILING = 64,
 	FFCF_RESTRICTEDPORTAL = 128,	// current values in the iterator's return are through a restricted portal type (i.e. some features are blocked.)
 	FFCF_NODROPOFF = 256,			// Caller does not need a dropoff (saves some time when checking portals)
+	FFCF_NOPOLYOBJ = 512,			// Skip polyobj check
 };
 void	P_FindFloorCeiling (AActor *actor, int flags=0);
 
@@ -429,7 +430,7 @@ double	P_GetMoveFactor(const AActor *mo, double *frictionp);	// phares  3/6/98
 double		P_GetFriction(const AActor *mo, double *frictionfactor);
 
 // [RH] 
-const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move);
+const secplane_t * P_CheckSlopeWalk(AActor *actor, DVector2 &move, sector_t * &walksec);
 
 //
 // P_INTER
