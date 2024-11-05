@@ -104,7 +104,17 @@ void CollectLights(FLevelLocals* Level)
 //
 //-----------------------------------------------------------------------------
 
-sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen)
+static void DrawLine(FRenderState &state, const DebugLine &line)
+{
+	state.SetColor(line.color, 0);
+
+	auto vert = screen->mVertexData->AllocVertices(2);
+	vert.first[0].Set(line.start.X, line.start.Y, line.start.Z, 0, 0);
+	vert.first[1].Set(line.end.X, line.end.Y, line.end.Z, 0, 0);
+	screen->RenderState()->Draw(DT_Lines, vert.second, 2);
+}
+
+sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bounds, float fov, float ratio, float fovratio, bool mainview, bool toscreen, TArray<DebugLine> *DebugLines1, TArray<DebugLine> *DebugLines2)
 {
 	auto& RenderState = *screen->RenderState();
 
@@ -174,6 +184,28 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 
 		di->ProcessScene(toscreen);
 
+		if(DebugLines1 || DebugLines2)
+		{
+			RenderState.SetAddColor(0);
+			RenderState.SetDynLight(0, 0, 0);
+			RenderState.SetRenderStyle(STYLE_Normal);
+			RenderState.SetTextureMode(TM_NORMAL);
+			RenderState.EnableTexture(false);
+			if(DebugLines1) for(const auto &line : *DebugLines1)
+			{
+				DrawLine(RenderState, line);
+			}
+
+			if(DebugLines2) for(const auto &line : *DebugLines2)
+			{
+				DrawLine(RenderState, line);
+			}
+			RenderState.EnableTexture(true);
+		}
+
+		// Reset colormap so 2D drawing isn't affected
+		RenderState.SetSpecialColormap(CM_DEFAULT, 1);
+
 		if (mainview)
 		{
 			PostProcess.Clock();
@@ -188,8 +220,6 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 			screen->PostProcessScene(false, cm, flash, [&]() { di->DrawEndScene2D(mainvp.sector, RenderState); });
 			PostProcess.Unclock();
 		}
-		// Reset colormap so 2D drawing isn't affected
-		RenderState.SetSpecialColormap(CM_DEFAULT, 1);
 
 		di->EndDrawInfo();
 		if (eyeCount - eye_ix > 1)
@@ -287,7 +317,7 @@ void WriteSavePic(player_t* player, FileWriter* file, int width, int height)
 
 		// This shouldn't overwrite the global viewpoint even for a short time.
 		FRenderViewpoint savevp;
-		sector_t* viewsector = RenderViewpoint(savevp, players[consoleplayer].camera, &bounds, r_viewpoint.FieldOfView.Degrees(), 1.6f, 1.6f, true, false);
+		sector_t* viewsector = RenderViewpoint(savevp, players[consoleplayer].camera, &bounds, r_viewpoint.FieldOfView.Degrees(), 1.6f, 1.6f, true, false, nullptr, nullptr);
 		RenderState.EnableStencil(false);
 		RenderState.SetNoSoftLightLevel();
 
@@ -316,6 +346,23 @@ static void CheckTimer(FRenderState &state, uint64_t ShaderStartTime)
 		state.firstFrame = screen->FrameTime - 1;
 }
 
+TArray<DebugLine> FrameDebugLines;
+TArray<DebugLine> PlayDebugLines;
+
+void AddDebugLineFrame(DebugLine line)
+{
+	FrameDebugLines.Push(line);
+}
+
+void AddDebugLinePlay(DebugLine line)
+{
+	PlayDebugLines.Push(line);
+}
+
+void ClearDebugLinesPlay()
+{
+	PlayDebugLines.Clear();
+}
 
 sector_t* RenderView(player_t* player)
 {
@@ -384,7 +431,7 @@ sector_t* RenderView(player_t* player)
 						{
 							FRenderViewpoint texvp;
 							float ratio = camtex->aspectRatio / Level->info->pixelstretch;
-							RenderViewpoint(texvp, camera, &bounds, fov, ratio, ratio, false, false);
+							RenderViewpoint(texvp, camera, &bounds, fov, ratio, ratio, false, false, nullptr, nullptr);
 						});
 				});
 		}
@@ -404,8 +451,9 @@ sector_t* RenderView(player_t* player)
 
 		screen->ImageTransitionScene(true); // Only relevant for Vulkan.
 
-		retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true);
+		retsec = RenderViewpoint(r_viewpoint, player->camera, NULL, r_viewpoint.FieldOfView.Degrees(), ratio, fovratio, true, true, &FrameDebugLines, &PlayDebugLines);
 	}
+	FrameDebugLines.Clear();
 	All.Unclock();
 	return retsec;
 }

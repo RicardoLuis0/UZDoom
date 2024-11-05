@@ -330,6 +330,17 @@ sector_t* RenderViewpoint(FRenderViewpoint& mainvp, AActor* camera, IntRect* bou
 void WriteSavePic(player_t* player, FileWriter* file, int width, int height);
 sector_t* RenderView(player_t* player);
 
+struct DebugLine
+{
+	DVector3 start;
+	DVector3 end;
+	PalEntry color;
+};
+
+void AddDebugLineFrame(DebugLine line);
+void AddDebugLinePlay(DebugLine line);
+void ClearDebugLinesPlay();
+
 
 inline bool isSoftwareLighting(ELightMode lightmode)
 {

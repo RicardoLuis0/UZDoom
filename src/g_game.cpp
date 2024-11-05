@@ -21,11 +21,12 @@
 //
 
 
+#include <cstdint>
+#include <cstring>
+#include <cstdlib>
+#include <cstdio>
+#include <cstddef>
 
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <stddef.h>
 #include <memory>
 
 #include "i_time.h"
@@ -1131,12 +1132,125 @@ static uint32_t StaticSumSeeds()
 		pr_damagemobj.Seed();
 }
 
+void DebugDrawBoundingBox3D(const FBoundingBox &bbox, double z, double height, PalEntry color)
+{
+	double topZ = z + height;
+
+	DVector3 verts[] = {
+		{bbox.Top(), z, bbox.Left()},
+		{bbox.Top(), z, bbox.Right()},
+		{bbox.Bottom(), z, bbox.Left()},
+		{bbox.Bottom(), z, bbox.Right()},
+		{bbox.Top(), topZ, bbox.Left()},
+		{bbox.Top(), topZ, bbox.Right()},
+		{bbox.Bottom(), topZ, bbox.Left()},
+		{bbox.Bottom(), topZ, bbox.Right()},
+	};
+
+	//bottom
+	AddDebugLinePlay({verts[0], verts[1], color});
+	AddDebugLinePlay({verts[1], verts[2], color});
+	AddDebugLinePlay({verts[2], verts[3], color});
+	AddDebugLinePlay({verts[3], verts[0], color});
+
+	//top
+	AddDebugLinePlay({verts[4], verts[5], color});
+	AddDebugLinePlay({verts[5], verts[6], color});
+	AddDebugLinePlay({verts[6], verts[7], color});
+	AddDebugLinePlay({verts[7], verts[4], color});
+
+	// edges
+	AddDebugLinePlay({verts[0], verts[4], color});
+	AddDebugLinePlay({verts[1], verts[5], color});
+	AddDebugLinePlay({verts[2], verts[6], color});
+	AddDebugLinePlay({verts[3], verts[7], color});
+}
+
+void DebugDrawBoundingBox2D(const FBoundingBox &bbox, PalEntry color)
+{
+	double bottomZ = INT16_MIN;
+	double topZ = INT16_MAX;
+
+	DVector3 verts[] = {
+		/*
+		{bbox.Top(), bottomZ, bbox.Left()},
+		{bbox.Top(), bottomZ, bbox.Right()},
+		{bbox.Bottom(), bottomZ, bbox.Left()},
+		{bbox.Bottom(), bottomZ, bbox.Right()},
+		{bbox.Top(), topZ, bbox.Left()},
+		{bbox.Top(), topZ, bbox.Right()},
+		{bbox.Bottom(), topZ, bbox.Left()},
+		{bbox.Bottom(), topZ, bbox.Right()},
+		*/
+		{bbox.Left(), bottomZ, bbox.Top()},
+		{bbox.Left(), bottomZ, bbox.Bottom()},
+		{bbox.Right(), bottomZ, bbox.Top()},
+		{bbox.Right(), bottomZ, bbox.Bottom()},
+		{bbox.Left(), topZ, bbox.Top()},
+		{bbox.Left(), topZ, bbox.Bottom()},
+		{bbox.Right(), topZ, bbox.Top()},
+		{bbox.Right(), topZ, bbox.Bottom()},
+	};
+
+	AddDebugLinePlay({verts[0], verts[4], color});
+	AddDebugLinePlay({verts[1], verts[5], color});
+	AddDebugLinePlay({verts[2], verts[6], color});
+	AddDebugLinePlay({verts[3], verts[7], color});
+}
+
+template<typename T>
+void DebugDrawBoundingBox2D(T (&bbox)[4], PalEntry color)
+{
+	DebugDrawBoundingBox2D(FBoundingBox(bbox[BOXLEFT], bbox[BOXBOTTOM], bbox[BOXRIGHT], bbox[BOXTOP]), color);
+}
+
+CVAR(Bool, gl_debug_poly_draw_lines_bbox, true, CVAR_ARCHIVE)
+CVAR(Bool, gl_debug_poly_draw_bbox, true, CVAR_ARCHIVE)
+
+void DebugDrawPoly(FPolyObj *poly)
+{
+	//DebugDrawBoundingBox(FBoundingBox(poly->bbox[0] * 64.0, poly->bbox[1] * 64.0, (poly->bbox[2] + 0.99999) * 64.0, (poly->bbox[3] + 0.99999) * 64.0), {255, 255, 255, 255});
+
+	PalEntry bbox_color = {64, 255, 255, 255};
+
+	double top = poly->Linedefs[0]->bbox[BOXTOP];
+	double bottom = poly->Linedefs[0]->bbox[BOXBOTTOM];
+	double right = poly->Linedefs[0]->bbox[BOXRIGHT];
+	double left = poly->Linedefs[0]->bbox[BOXLEFT];
+
+	for(auto * line : poly->Linedefs)
+	{
+		if(gl_debug_poly_draw_lines_bbox) DebugDrawBoundingBox2D(line->bbox, bbox_color);
+
+		top = std::max(top, line->bbox[BOXTOP]);
+		bottom = std::min(bottom, line->bbox[BOXBOTTOM]);
+		right = std::max(right, line->bbox[BOXRIGHT]);
+		left = std::min(left, line->bbox[BOXLEFT]);
+	}
+
+	bbox_color = {255, 255, 255, 255};
+
+	if(gl_debug_poly_draw_bbox) DebugDrawBoundingBox2D(FBoundingBox(left, bottom, right, top), bbox_color);
+}
+
+CVAR(Bool, gl_debug_poly, false, CVAR_ARCHIVE)
+
 //
 // G_Ticker
 // Make ticcmd_ts for the players.
 //
 void G_Ticker ()
 {
+	ClearDebugLinesPlay();
+
+	if(gl_debug_poly)
+	{
+		for(FPolyObj &poly : level.Polyobjects)
+		{
+			DebugDrawPoly(&poly);
+		}
+	}
+
 	int i;
 	gamestate_t	oldgamestate;
 
