@@ -1263,12 +1263,15 @@ FSerializer& Serialize(FSerializer& arc, const char* key, FTranslationID& value,
 //
 //==========================================================================
 
+
+bool SerializerAllowWhenSerializingOnlyPlayer(FSerializer &arc, DObject * obj);
+
 FSerializer &Serialize(FSerializer &arc, const char *key, DObject *&value, DObject ** /*defval*/, bool *retcode)
 {
 	if (retcode) *retcode = true;
 	if (arc.isWriting())
 	{
-		if (value != nullptr && !(value->ObjectFlags & (OF_EuthanizeMe | OF_Transient)))
+		if (value != nullptr && !(value->ObjectFlags & (OF_EuthanizeMe | OF_Transient)) && SerializerAllowWhenSerializingOnlyPlayer(arc, value))
 		{
 			int ndx;
 			if (value == WP_NOCHANGE)

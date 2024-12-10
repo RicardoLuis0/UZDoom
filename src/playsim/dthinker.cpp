@@ -92,6 +92,11 @@ void FThinkerCollection::Link(DThinker *thinker, int statnum)
 	list->AddTail(thinker);
 }
 
+bool FThinkerCollection::IsTravelling(DThinker *thinker)
+{
+	return Thinkers[STAT_TRAVELLING].HasThinker(thinker);
+}
+
 //==========================================================================
 //
 //
@@ -623,6 +628,24 @@ int FThinkerList::TickThinkers(FThinkerList *dest)
 		node = NextToThink;
 	}
 	return count;
+}
+
+bool FThinkerList::HasThinker(DThinker * t)
+{
+	DThinker *node = GetHead();
+
+	if (node == nullptr)
+	{
+		return false;
+	}
+
+	while (node != Sentinel)
+	{
+		if(node == t) return true;
+		node = node->NextThinker;
+	}
+
+	return false;
 }
 
 //==========================================================================

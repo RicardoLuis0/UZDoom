@@ -114,6 +114,8 @@ void	G_DoSaveGame (bool okForQuicksave, bool forceQuicksave, FString filename, c
 void	G_DoAutoSave ();
 void	G_DoQuickSave ();
 
+FString G_SnapshotPlayer(AActor * pawn);
+
 void STAT_Serialize(FSerializer &file);
 
 CVARD_NAMED(Int, gameskill, skill, 2, CVAR_SERVERINFO|CVAR_LATCH, "sets the skill for the next newly started game")

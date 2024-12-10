@@ -227,6 +227,8 @@ public:
 	int mErrors = 0;
 	int mObjectErrors = 0;
 	FString mLumpName;
+
+	bool serializeOnlyPlayer = false;
 };
 
 FSerializer& Serialize(FSerializer& arc, const char* key, char& value, char* defval);

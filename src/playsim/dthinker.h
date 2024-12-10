@@ -64,6 +64,8 @@ struct FThinkerList
 	int ProfileThinkers(FThinkerList *dest);
 	void SaveList(FSerializer &arc);
 
+	bool HasThinker(DThinker *);
+
 private:
 	DThinker *Sentinel = nullptr;
 
@@ -84,6 +86,8 @@ struct FThinkerCollection
 	void MarkRoots();
 	DThinker *FirstThinker(int statnum);
 	void Link(DThinker *thinker, int statnum);
+
+	bool IsTravelling(DThinker *thinker);
 
 private:
 	FThinkerList Thinkers[MAX_STATNUM + 2];

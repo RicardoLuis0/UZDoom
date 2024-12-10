@@ -225,10 +225,18 @@ FSerializer& FDoomSerializer::StatePointer(const char* key, void* ptraddr, bool 
 	return *this;
 }
 
+bool SerializerAllowWhenSerializingOnlyPlayer(FSerializer &arc, DObject * obj)
+{
+	return (!arc.serializeOnlyPlayer
+		|| (!obj->GetClass()->IsDescendantOf(RUNTIME_CLASS(DThinker)))
+		|| static_cast<DThinker*>(obj)->Level->Thinkers.IsTravelling(static_cast<DThinker*>(obj)));
+}
+
 
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, FPolyObj *&value, FPolyObj **defval)
 {
+	if(ar.isWriting() && ar.serializeOnlyPlayer) return ar;
 	auto arc = dynamic_cast<FDoomSerializer*>(&ar);
 	if (!arc || arc->Level == nullptr) I_Error("Trying to serialize polyobject without a valid level");
 	return SerializePointer(*arc, key, value, defval, arc->Level->Polyobjects);
@@ -236,6 +244,7 @@ template<> FSerializer &Serialize(FSerializer &ar, const char *key, FPolyObj *&v
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, side_t *&value, side_t **defval)
 {
+	if(ar.isWriting() && ar.serializeOnlyPlayer) return ar;
 	auto arc = dynamic_cast<FDoomSerializer*>(&ar);
 	if (!arc || arc->Level == nullptr) I_Error("Trying to serialize SIDEDEF without a valid level");
 	return SerializePointer(*arc, key, value, defval, arc->Level->sides);
@@ -243,6 +252,7 @@ template<> FSerializer &Serialize(FSerializer &ar, const char *key, side_t *&val
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, sector_t *&value, sector_t **defval)
 {
+	if(ar.isWriting() && ar.serializeOnlyPlayer) return ar;
 	auto arc = dynamic_cast<FDoomSerializer*>(&ar);
 	if (!arc || arc->Level == nullptr) I_Error("Trying to serialize sector without a valid level");
 	return SerializePointer(*arc, key, value, defval, arc->Level->sectors);
@@ -255,6 +265,7 @@ template<> FSerializer &Serialize(FSerializer &arc, const char *key, player_t *&
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, line_t *&value, line_t **defval)
 {
+	if(ar.isWriting() && ar.serializeOnlyPlayer) return ar;
 	auto arc = dynamic_cast<FDoomSerializer*>(&ar);
 	if (!arc || arc->Level == nullptr) I_Error("Trying to serialize linedef without a valid level");
 	return SerializePointer(*arc, key, value, defval, arc->Level->lines);
@@ -262,6 +273,7 @@ template<> FSerializer &Serialize(FSerializer &ar, const char *key, line_t *&val
 
 template<> FSerializer &Serialize(FSerializer &ar, const char *key, vertex_t *&value, vertex_t **defval)
 {
+	if(ar.isWriting() && ar.serializeOnlyPlayer) return ar;
 	auto arc = dynamic_cast<FDoomSerializer*>(&ar);
 	if (!arc || arc->Level == nullptr) I_Error("Trying to serialize vertex without a valid level");
 	return SerializePointer(*arc, key, value, defval, arc->Level->vertexes);

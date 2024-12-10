@@ -1565,6 +1565,17 @@ DEFINE_ACTION_FUNCTION(FLevelLocals, WorldDone)
 //
 //==========================================================================
 
+FString G_SnapshotPlayer(AActor * pawn)
+{
+	FSerializer s;
+	s.serializeOnlyPlayer = true;
+	s.OpenWriter(false);
+	s("Player", pawn);
+	unsigned len;
+	const char * str = s.GetOutput(&len);
+	return FString(str, len);
+}
+
 void G_DoWorldDone (void) 
 {		 
 	gamestate = GS_LEVEL;
