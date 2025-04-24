@@ -2764,7 +2764,9 @@ FxExpression *FxAssign::Resolve(FCompileContext &ctx)
 					btype = p;
 				}
 			}
-			constexpr auto BETTER_ASSIGN_VER = MakeVersion(4, 11, 1);
+
+			constexpr auto BETTER_ASSIGN_VER = MakeVersion(4, 11, 1); // array/map assignments got into 4.11.1
+			constexpr auto STRUCT_ASSIGN_VER = MakeVersion(4, 15, 1);
 
 			if (btype->isDynArray())
 			{
@@ -2848,18 +2850,18 @@ FxExpression *FxAssign::Resolve(FCompileContext &ctx)
 					delete this;
 					return nullptr;
 				}
-				else if(ctx.Version < BETTER_ASSIGN_VER)
+				else if(ctx.Version < STRUCT_ASSIGN_VER)
 				{
 					if(Base->ValueType->isRealPointer() && Right->ValueType->isRealPointer())
 					{ // don't break existing code, but warn that it's a no-op
-						ScriptPosition.Message(MSG_WARNING, "Struct assignments not allowed in zscript versions below 4.11.1\n"
+						ScriptPosition.Message(MSG_WARNING, "Struct assignments not allowed in zscript versions below 4.15.1\n"
 										  TEXTCOLOR_RED "  Assigning an out struct pointer to another out struct pointer\n"
 														"  does not alter either of the underlying structs' values\n"
 														"  it only swaps the pointers!!");
 					}
 					else
 					{
-						ScriptPosition.Message(MSG_ERROR, "Struct assignments not allowed in zscript versions below 4.11.1");
+						ScriptPosition.Message(MSG_ERROR, "Struct assignments not allowed in zscript versions below 4.15.1");
 						delete this;
 						return nullptr;
 					}
