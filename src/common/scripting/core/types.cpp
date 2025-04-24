@@ -3452,26 +3452,12 @@ PPrototype::PPrototype(const TArray<PType *> &rettypes, const TArray<PType *> &a
 {
 	for (auto& type: ArgumentTypes)
 	{
-		if (type == TypeFVector2)
-		{
-			type = TypeVector2;
-		}
-		else if (type == TypeFVector3)
-		{
-			type = TypeVector3;
-		}
+		type = type->GetLocalType();
 	}
 
 	for (auto& type : ReturnTypes)
 	{
-		if (type == TypeFVector2)
-		{
-			type = TypeVector2;
-		}
-		else if (type == TypeFVector3)
-		{
-			type = TypeVector3;
-		}
+		type = type->GetLocalType();
 	}
 }
 
