@@ -639,7 +639,15 @@ void FSerializer::WriteObjects()
 {
 	if (isWriting() && w->mDObjects.Size())
 	{
-		BeginArray("objects");
+		if(useNetIDs)
+		{
+			BeginObject("objects");
+		}
+		else
+		{
+			BeginArray("objects");
+		}
+
 		// we cannot use the C++11 shorthand syntax here because the array may grow while being processed.
 		for (unsigned i = 0; i < w->mDObjects.Size(); i++)
 		{
@@ -647,7 +655,15 @@ void FSerializer::WriteObjects()
 
 			if(obj->ObjectFlags & OF_Transient) continue;
 
-			BeginObject(nullptr);
+			if(useNetIDs)
+			{
+				std::string id = std::to_string(obj->GetNetworkID());
+				BeginObject(id.c_str());
+			}
+			else
+			{
+				BeginObject(nullptr);
+			}
 			w->Key("classtype");
 			w->String(obj->GetClass()->TypeName.GetChars());
 
@@ -656,7 +672,15 @@ void FSerializer::WriteObjects()
 			obj->CheckIfSerialized();
 			EndObject();
 		}
-		EndArray();
+
+		if(useNetIDs)
+		{
+			EndObject();
+		}
+		else
+		{
+			EndArray();
+		}
 	}
 }
 
@@ -670,38 +694,93 @@ void FSerializer::ReadObjects(bool hubtravel)
 {
 	bool founderrors = false;
 
-	if (isReading() && BeginArray("objects"))
+	if(isReading() && (useNetIDs ? BeginObject("objects") : BeginArray("objects")))
 	{
 		// Do not link any thinker that's being created here. This will be done by deserializing the thinker list later.
 		try
 		{
-			r->mDObjects.Resize(ArraySize());
-			for (auto &p : r->mDObjects)
+			if(useNetIDs)
 			{
-				p = nullptr;
-			}
+				auto it = r->mObjects.Last().mObject->GetObject().MemberBegin();
+				auto itEnd = r->mObjects.Last().mObject->GetObject().MemberEnd();
 
-			// First iteration: create all the objects but do nothing with them yet.
-			for (unsigned i = 0; i < r->mDObjects.Size(); i++)
-			{
-				if (BeginObject(nullptr))
+				TArray<uint32_t> keys;
+
+				for(;it != itEnd; it++)
 				{
-					FString clsname;	// do not deserialize the class type directly so that we can print appropriate errors.
+					keys.Push((uint32_t)std::atoll(it->name.GetString())); // idk if deserializing during iteration is safe so intermediary step just to make sure
+				}
 
-					Serialize(*this, "classtype", clsname, nullptr);
-					PClass *cls = PClass::FindClass(clsname);
-					if (cls == nullptr)
+				for(uint32_t key : keys)
+				{
+					std::string k = std::to_string(key);
+					if (BeginObject(k.c_str()))
 					{
-						Printf(TEXTCOLOR_RED "Unknown object class '%s' in savegame\n", clsname.GetChars());
-						founderrors = true;
-						r->mDObjects[i] = RUNTIME_CLASS(DObject)->CreateNew();	// make sure we got at least a valid pointer for the duration of the loading process.
-						r->mDObjects[i]->Destroy();								// but we do not want to keep this around, so destroy it right away.
+						FString clsname;	// do not deserialize the class type directly so that we can print appropriate errors.
+
+						Serialize(*this, "classtype", clsname, nullptr);
+						PClass *cls = PClass::FindClass(clsname);
+						if (cls == nullptr)
+						{
+							Printf(TEXTCOLOR_RED "Unknown object class '%s' in savegame\n", clsname.GetChars());
+							founderrors = true;
+
+							DObject * dummyObj = RUNTIME_CLASS(DObject)->CreateNew();
+
+							r->mNetDObjects[key] = dummyObj;	// make sure we got at least a valid pointer for the duration of the loading process.
+							dummyObj->Destroy();			// but we do not want to keep this around, so destroy it right away.
+
+							DObject * obj = NetworkEntityManager::GetNetworkEntity(key);
+							if(obj) obj->Destroy();
+						}
+						else
+						{
+							DObject * obj = NetworkEntityManager::GetNetworkEntity(key);
+
+							if(obj->GetClass() == cls)
+							{
+								r->mNetDObjects[key] = obj;
+							}
+							else
+							{
+								r->mNetDObjects[key] = cls->CreateNew();
+								r->mDObjects.Push(r->mNetDObjects[key]);
+							}
+						}
+						EndObject();
 					}
-					else
+				}
+			}
+			else
+			{
+				r->mDObjects.Resize(ArraySize());
+				for (auto &p : r->mDObjects)
+				{
+					p = nullptr;
+				}
+
+				// First iteration: create all the objects but do nothing with them yet.
+				for (unsigned i = 0; i < r->mDObjects.Size(); i++)
+				{
+					if (BeginObject(nullptr))
 					{
-						r->mDObjects[i] = cls->CreateNew();
+						FString clsname;	// do not deserialize the class type directly so that we can print appropriate errors.
+
+						Serialize(*this, "classtype", clsname, nullptr);
+						PClass *cls = PClass::FindClass(clsname);
+						if (cls == nullptr)
+						{
+							Printf(TEXTCOLOR_RED "Unknown object class '%s' in savegame\n", clsname.GetChars());
+							founderrors = true;
+							r->mDObjects[i] = RUNTIME_CLASS(DObject)->CreateNew();	// make sure we got at least a valid pointer for the duration of the loading process.
+							r->mDObjects[i]->Destroy();								// but we do not want to keep this around, so destroy it right away.
+						}
+						else
+						{
+							r->mDObjects[i] = cls->CreateNew();
+						}
+						EndObject();
 					}
-					EndObject();
 				}
 			}
 			// Now that everything has been created and we can retrieve the pointers we can deserialize it.
@@ -737,7 +816,15 @@ void FSerializer::ReadObjects(bool hubtravel)
 					}
 				}
 			}
-			EndArray();
+
+			if(useNetIDs)
+			{
+				EndObject();
+			}
+			else
+			{
+				EndArray();
+			}
 
 			if (founderrors)
 			{
@@ -1270,7 +1357,7 @@ FSerializer &Serialize(FSerializer &arc, const char *key, DObject *&value, DObje
 	if (retcode) *retcode = true;
 	if (arc.isWriting())
 	{
-		if (value != nullptr && !(value->ObjectFlags & (OF_EuthanizeMe | OF_Transient)))
+		if (value != nullptr && !(value->ObjectFlags & (OF_EuthanizeMe | OF_Transient)) && (!arc.IsUsingNetIDs() || !!(value->ObjectFlags & OF_Networked)))
 		{
 			int ndx;
 			if (value == WP_NOCHANGE)
@@ -1287,7 +1374,10 @@ FSerializer &Serialize(FSerializer &arc, const char *key, DObject *&value, DObje
 				else
 				{
 					ndx = arc.w->mDObjects.Push(value);
-					arc.w->mObjectMap[value] = ndx;
+					
+					if(arc.IsUsingNetIDs()) ndx = value->GetNetworkID();
+
+					arc.w->mObjectMap[value] = ndx ;
 				}
 			}
 			Serialize(arc, key, ndx, nullptr);
@@ -1322,18 +1412,38 @@ FSerializer &Serialize(FSerializer &arc, const char *key, DObject *&value, DObje
 				}
 				else
 				{
-					assert(index >= 0 && index < (int)arc.r->mDObjects.Size());
-					if (index >= 0 && index < (int)arc.r->mDObjects.Size())
+					if(arc.IsUsingNetIDs())
 					{
-						value = arc.r->mDObjects[index];
+						DObject ** obj = arc.r->mNetDObjects.CheckKey(index);
+
+						if(obj == nullptr)
+						{
+							assert(false && "invalid object reference");
+							Printf(TEXTCOLOR_RED "Invalid object reference for '%s', inexistent NetID '%d'\n", key, index);
+							value = nullptr;
+							arc.mErrors++;
+							if (retcode) *retcode = false;
+						}
+						else
+						{
+							value = *obj;
+						}
 					}
 					else
 					{
-						assert(false && "invalid object reference");
-						Printf(TEXTCOLOR_RED "Invalid object reference for '%s'\n", key);
-						value = nullptr;
-						arc.mErrors++;
-						if (retcode) *retcode = false;
+						assert(index >= 0 && index < (int)arc.r->mDObjects.Size());
+						if (index >= 0 && index < (int)arc.r->mDObjects.Size())
+						{
+							value = arc.r->mDObjects[index];
+						}
+						else
+						{
+							assert(false && "invalid object reference");
+							Printf(TEXTCOLOR_RED "Invalid object reference for '%s'\n", key);
+							value = nullptr;
+							arc.mErrors++;
+							if (retcode) *retcode = false;
+						}
 					}
 				}
 				return arc;

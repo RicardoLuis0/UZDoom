@@ -71,6 +71,7 @@ public:
 	FWriter *w = nullptr;
 	FReader *r = nullptr;
 	bool soundNamesAreUnique = false; // While in GZDoom, sound names are unique, that isn't universally true - let the serializer handle both cases with a flag.
+	bool useNetIDs = false;
 
 	unsigned ArraySize();
 	void WriteKey(const char *key);
@@ -86,6 +87,8 @@ public:
 		Close();
 	}
 	void SetUniqueSoundNames() { soundNamesAreUnique = true; }
+	void SetUseNetIDs() { useNetIDs = true; }
+	bool IsUsingNetIDs() { return useNetIDs; }
 	bool OpenWriter(bool pretty = true);
 	bool OpenReader(const char *buffer, size_t length);
 	bool OpenReader(FileSys::FCompressedBuffer *input);

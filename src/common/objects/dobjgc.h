@@ -103,6 +103,16 @@ namespace GC
 	static inline void WriteBarrier(DObject *pointed);
 
 	// Handles a read barrier.
+	template<class T> inline T *ConstReadBarrier(T *&obj)
+	{
+		if (obj == NULL || !(obj->ObjectFlags & OF_EuthanizeMe))
+		{
+			return obj;
+		}
+		return NULL;
+	}
+
+	// Handles a read barrier.
 	template<class T> inline T *ReadBarrier(T *&obj)
 	{
 		if (obj == NULL || !(obj->ObjectFlags & OF_EuthanizeMe))

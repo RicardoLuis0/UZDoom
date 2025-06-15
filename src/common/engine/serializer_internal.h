@@ -182,6 +182,7 @@ struct FReader
 	TArray<FJSONObject> mObjects;
 	rapidjson::Document mDoc;
 	TArray<DObject *> mDObjects;
+	TMap<int, DObject *> mNetDObjects;
 	rapidjson::Value *mKeyValue = nullptr;
 	bool mObjectsRead = false;
 
