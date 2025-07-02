@@ -124,12 +124,12 @@ static TArray<StateMapper> StateMap;
 static TArray<FSoundID> SoundMap;
 
 // Names of different actor types, in original Doom 2 order
-static TArray<PClassActor *> InfoNames;
+static TMap<int, PClassActor *> InfoNames;
 
 static PClassActor* FindInfoName(int index, bool mustexist = false)
 {
-	if (index < 0) return nullptr;
-	if (index < (int)InfoNames.Size()) return InfoNames[index];
+	PClassActor **cls = InfoNames.CheckKey(index);
+	if (cls) return *cls;
 
 	if (dsdhacked)
 	{
@@ -141,6 +141,7 @@ static PClassActor* FindInfoName(int index, bool mustexist = false)
 			NewClassType(cls, -1);	// This needs a VM type to work as intended.
 			cls->InitializeDefaults();
 			PClassActor::AllActorClasses.Push(cls);
+			InfoNames.Insert(index, cls);
 		}
 		if (cls)
 		{
@@ -3412,7 +3413,7 @@ static void UnloadDehSupp ()
 	OrgHeights.Reset();
 	CodePConv.Reset();
 	SoundMap.Reset();
-	InfoNames.Reset();
+	InfoNames.Clear();
 	BitNames.Reset();
 	StyleNames.Reset();
 	AmmoNames.Reset();
@@ -3620,16 +3621,26 @@ bool LoadDehSupp ()
 			}
 			else if (sc.Compare("InfoNames"))
 			{
+				int curIndex = 0;
 				sc.MustGetStringName("{");
 				while (!sc.CheckString("}"))
 				{
 					sc.MustGetString();
+
+					if(sc.Compare("$curindex"))
+					{
+						sc.MustGetNumber();
+						curIndex = sc.Number;
+						continue;
+					}
+
 					PClassActor *cls = PClass::FindActor(sc.String);
 					if (cls == NULL)
 					{
 						sc.ScriptError("Unknown actor type '%s'", sc.String);
 					}
-					InfoNames.Push(cls);
+					InfoNames.Insert(curIndex, cls);
+					curIndex++;
 					if (sc.CheckString("}")) break;
 					sc.MustGetStringName(",");
 				}
@@ -3760,10 +3771,15 @@ void FinishDehPatch ()
 
 	// For compatibility all potentially altered actors now using A_SkullFly need to be set to the original slamming behavior.
 	// Since this flag does not affect anything else let's just set it for everything, it will just be ignored by non-charging things.
-	for (auto cls : InfoNames)
+
+	TMapIterator<int, PClassActor *> it(InfoNames);
+
+	TMap<int, PClassActor *>::Pair *p;
+	while(it.NextPair(p))
 	{
-		GetDefaultByType(cls)->flags8 |= MF8_RETARGETAFTERSLAM;
+		GetDefaultByType(p->Value)->flags8 |= MF8_RETARGETAFTERSLAM;
 	}
+
 	RemapAllSprites();
 	
 	for (touchedIndex = 0; touchedIndex < TouchedActors.Size(); ++touchedIndex)
