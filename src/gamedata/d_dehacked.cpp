@@ -111,6 +111,7 @@ static TMap<FState*, int> stateSprites;
 struct StateMapper
 {
 	FState *State;
+	int StartIndex;
 	int StateSpan;
 	PClassActor *Owner;
 	bool OwnerIsPickup;
@@ -551,15 +552,14 @@ static int FindSprite (const char *sprname)
 
 static FState *FindState (int statenum, bool mustexist)
 {
-	int stateacc;
 	unsigned i;
 
 	if (statenum <= 0)
 		return NULL;
 
-	for (i = 0, stateacc = 1; i < StateMap.Size(); i++)
+	for (i = 0; i < StateMap.Size(); i++)
 	{
-		if (stateacc <= statenum && stateacc + StateMap[i].StateSpan > statenum)
+		if (StateMap[i].StartIndex <= statenum && (StateMap[i].StartIndex + StateMap[i].StateSpan) > statenum)
 		{
 			if (StateMap[i].State != nullptr)
 			{
@@ -567,11 +567,10 @@ static FState *FindState (int statenum, bool mustexist)
 				{
 					PushTouchedActor(StateMap[i].Owner);
 				}
-				return StateMap[i].State + statenum - stateacc;
+				return StateMap[i].State + (statenum - StateMap[i].StartIndex);
 			}
 			else break;
 		}
-		stateacc += StateMap[i].StateSpan;
 	}
 	if (dsdhacked)
 	{
@@ -3547,13 +3546,20 @@ bool LoadDehSupp ()
 			else if (sc.Compare("StateMap"))
 			{
 				bool addit = StateMap.Size() == 0;
-				int dehcount = 0;
+				int curIndex = 0;
 
 				sc.MustGetStringName("{");
 				while (!sc.CheckString("}"))
 				{
 					StateMapper s;
 					sc.MustGetString();
+
+					if(sc.Compare("$curindex"))
+					{
+						sc.MustGetNumber();
+						curIndex = sc.Number;
+						continue;
+					}
 
 					PClass *type = PClass::FindClass (sc.String);
 					if (type == NULL)
@@ -3582,21 +3588,23 @@ bool LoadDehSupp ()
 					}
 					AActor *def = GetDefaultByType(type);
 					
+					s.StartIndex = curIndex;
 					s.StateSpan = sc.Number;
 					s.Owner = actortype;
 					s.OwnerIsPickup = def != NULL && (def->flags & MF_SPECIAL) != 0;
 					if (addit) StateMap.Push(s);
 
-					if (sc.CheckString("}")) break;
-					sc.MustGetStringName(",");
 					// This mapping is mainly for P_SetSafeFlash.
 					for (int i = 0; i < s.StateSpan; i++)
 					{
 						assert(FState::StaticFindStateOwner(s.State + i));
-						dehExtStates.Insert(dehcount, s.State + i);
-						s.State[i].DehIndex = dehcount;
-						dehcount++;
+						dehExtStates.Insert(curIndex, s.State + i);
+						s.State[i].DehIndex = curIndex;
+						curIndex++;
 					}
+
+					if (sc.CheckString("}")) break;
+					sc.MustGetStringName(",");
 				}
 			}
 			else if (sc.Compare("SoundMap"))
