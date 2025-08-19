@@ -3,6 +3,11 @@
 #ifndef BENEFICII_RANGE_MAP_RANGE_MAP_HPP
 #define	BENEFICII_RANGE_MAP_RANGE_MAP_HPP
 
+#ifdef _MSC_VER
+#pragma warning( push )
+#pragma warning( disable : 4996 )
+#endif
+
 #include "range_map/internal/rm_iter.h"
 #include <algorithm>
 #include <stack>
@@ -1338,5 +1343,9 @@ template<class _kty, class _ty, class _compare, class _alloc_type>
 void swap(beneficii::range_map<_kty, _ty, _compare, _alloc_type>& A, beneficii::range_map<_kty, _ty, _compare, _alloc_type>& B) {
     A.swap(B);
 }
+
+#ifdef _MSC_VER
+    #pragma warning( pop )
+#endif
 
 #endif	/* RANGE_MAP_HPP */
