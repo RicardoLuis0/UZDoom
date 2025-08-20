@@ -25,6 +25,7 @@
 #include "vulkan/system/vk_renderdevice.h"
 #include "zvulkan/vulkanbuilders.h"
 #include "vulkan/system/vk_commandbuffer.h"
+#include "gl/gl_shaderprogram.h"
 #include "filesystem.h"
 #include "cmdlib.h"
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "hwrenderer/data/shaderuniforms.h"
+#include "v_video.h"
 #include <memory>
 #include <map>
 #include "intrect.h"
@@ -101,7 +102,7 @@ public:
 	{
 		Shader = nullptr;
 		Textures = TArray<PPTextureInput>();
-		Uniforms = PPUniforms();
+		Uniforms = {};
 		Viewport = PPViewport();
 		BlendMode = PPBlendMode();
 		Output = PPOutput();
@@ -222,7 +223,7 @@ public:
 
 	PPShader *Shader;
 	TArray<PPTextureInput> Textures;
-	PPUniforms Uniforms;
+	UniformStructHolder Uniforms;
 	PPViewport Viewport;
 	PPBlendMode BlendMode;
 	PPOutput Output;
@@ -792,16 +793,11 @@ public:
 	PostProcessShader *Desc = nullptr;
 
 private:
-	void AddUniformField(size_t &offset, const FString &name, UniformType type, size_t fieldsize, size_t alignment = 0);
 	void SetTextures(PPRenderState *renderstate);
 	void SetUniforms(PPRenderState *renderstate);
 
 	PPShader Shader;
-	int UniformStructSize = 0;
-	std::vector<UniformFieldDesc> Fields;
-	std::vector<std::unique_ptr<FString>> FieldNames;
 	std::map<FTexture*, std::unique_ptr<PPTexture>> Textures;
-	std::map<FString, size_t> FieldOffset;
 };
 
 class PPCustomShaders

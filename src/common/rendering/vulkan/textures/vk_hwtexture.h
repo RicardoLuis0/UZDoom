@@ -77,6 +77,7 @@ private:
 	{
 		int clampmode;
 		intptr_t remap;
+		GlobalShaderAddr globalShaderAddr;
 		std::unique_ptr<VulkanDescriptorSet> descriptor;
 
 		DescriptorEntry(int cm, intptr_t f, std::unique_ptr<VulkanDescriptorSet>&& d)

@@ -44,6 +44,7 @@
 #include "hw_texcontainer.h"
 #include "floatrect.h"
 #include "refcounted.h"
+#include "hwrenderer/data/shaderuniforms.h"
 
 class FImageSource;
 class FGameTexture;
@@ -82,7 +83,8 @@ enum MaterialShaderIndex
 	SHADER_NoiseFuzz,
 	SHADER_SmoothNoiseFuzz,
 	SHADER_SoftwareFuzz,
-	FIRST_USER_SHADER
+	NUM_BUILTIN_SHADERS,
+	FIRST_USER_SHADER = NUM_BUILTIN_SHADERS
 };
 
 enum texflags
@@ -101,15 +103,23 @@ enum
 	SFlag_Brightmap = 1,
 	SFlag_Detailmap = 2,
 	SFlag_Glowmap = 4,
+	SFlag_Global = 8,
 };
 
 struct UserShaderDesc
 {
 	FString shader;
+	FString vertshader;
 	MaterialShaderIndex shaderType;
 	FString defines;
 	bool disablealphatest = false;
 	uint8_t shaderFlags = 0;
+
+	std::vector<VaryingFieldDesc> Varyings;
+	UserUniforms Uniforms;
+	TMap<FString, FString> ActorFieldBindings;
+
+	void BindActorFields(void * act);
 };
 
 extern TArray<UserShaderDesc> usershaders;

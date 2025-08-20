@@ -1,8 +1,12 @@
 #pragma once
 
+#include <type_traits>
 #include <vector>
+#include <map>
+#include <cstddef>
 #include "hwrenderer/data/buffers.h"
-#include "v_video.h"
+#include "tarray.h"
+#include "zstring.h"
 
 enum
 {
@@ -17,6 +21,7 @@ enum
 
 enum class UniformType
 {
+	Undefined,
 	Int,
 	UInt,
 	Float,
@@ -32,124 +37,152 @@ enum class UniformType
 	Mat4
 };
 
-class UniformFieldDesc
+static inline const char *GetTypeStr(UniformType type)
 {
-public:
-	UniformFieldDesc() { }
-	UniformFieldDesc(const char *name, UniformType type, std::size_t offset) : Name(name), Type(type), Offset(offset) { }
+	switch (type)
+	{
+	default:
+	case UniformType::Int: return "int";
+	case UniformType::UInt: return "uint";
+	case UniformType::Float: return "float";
+	case UniformType::Vec2: return "vec2";
+	case UniformType::Vec3: return "vec3";
+	case UniformType::Vec4: return "vec4";
+	case UniformType::IVec2: return "ivec2";
+	case UniformType::IVec3: return "ivec3";
+	case UniformType::IVec4: return "ivec4";
+	case UniformType::UVec2: return "uvec2";
+	case UniformType::UVec3: return "uvec3";
+	case UniformType::UVec4: return "uvec4";
+	case UniformType::Mat4: return "mat4";
+	}
+}
 
-	const char *Name;
+struct UserUniformValue
+{
+	UniformType Type = UniformType::Undefined;
+	double Values[4] = { 0.0, 0.0, 0.0, 0.0 };
+};
+
+struct UniformFieldDesc
+{
+	FString Name;
 	UniformType Type;
 	std::size_t Offset;
 };
 
-class UniformBlockDecl
+struct VaryingFieldDesc
+{
+	FString Name;
+	FString Property;
+	UniformType Type;
+};
+
+struct UniformField
+{
+	UniformType Type = UniformType::Undefined;
+	void * Value = nullptr;
+};
+
+class UniformStructHolder
 {
 public:
-	static FString Create(const char *name, const std::vector<UniformFieldDesc> &fields, int bindingpoint)
+	UniformStructHolder()
 	{
-		FString decl;
-		FString layout;
-		if (bindingpoint == -1)
+	}
+
+	UniformStructHolder(const UniformStructHolder &src)
+	{
+		*this = src;
+	}
+
+	~UniformStructHolder()
+	{
+		Clear();
+	}
+
+	UniformStructHolder &operator=(const UniformStructHolder &src)
+	{
+		Clear();
+
+		if(src.alloc)
 		{
-			layout = "push_constant";
-		}
-		else if (screen->glslversion < 4.20)
-		{
-			layout = "std140";
+			alloc = true;
+			sz = src.sz;
+			addr = new uint8_t[sz];
+			memcpy((uint8_t*)addr, src.addr, sz);
 		}
 		else
 		{
-			layout.Format("std140, binding = %d", bindingpoint);
+			sz = src.sz;
+			addr = src.addr;
 		}
-		decl.Format("layout(%s) uniform %s\n{\n", layout.GetChars(), name);
-		for (size_t i = 0; i < fields.size(); i++)
-		{
-			decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
-		}
-		decl += "};\n";
 
-		return decl;
+		return *this;
 	}
 
-private:
-	static const char *GetTypeStr(UniformType type)
+	void Clear()
 	{
-		switch (type)
+		if(alloc)
 		{
-		default:
-		case UniformType::Int: return "int";
-		case UniformType::UInt: return "uint";
-		case UniformType::Float: return "float";
-		case UniformType::Vec2: return "vec2";
-		case UniformType::Vec3: return "vec3";
-		case UniformType::Vec4: return "vec4";
-		case UniformType::IVec2: return "ivec2";
-		case UniformType::IVec3: return "ivec3";
-		case UniformType::IVec4: return "ivec4";
-		case UniformType::UVec2: return "uvec2";
-		case UniformType::UVec3: return "uvec3";
-		case UniformType::UVec4: return "uvec4";
-		case UniformType::Mat4: return "mat4";
+			delete[] addr;
 		}
+		alloc = false;
+		addr = nullptr;
+		sz = 0;
 	}
+
+	template<typename T>
+	void Set(const T *v)
+	{
+		Clear();
+
+		sz = sizeof(T);
+		addr = reinterpret_cast<const uint8_t*>(v);
+	}
+
+	template<typename T>
+	void Set(const T &v, typename std::enable_if<!std::is_pointer_v<T>, bool>::type enabled = true)
+	{
+		static_assert(std::is_trivially_copyable_v<T>);
+
+		alloc = true;
+		sz = sizeof(T);
+		addr = new uint8_t[sizeof(T)];
+		memcpy((uint8_t*)addr, &v, sizeof(T));
+	}
+
+	bool alloc = false;
+	size_t sz = 0;
+	const uint8_t * addr = nullptr;
 };
 
-template<typename T, int bindingpoint>
-class ShaderUniforms
+class UserUniforms
 {
+	void AddUniformField(size_t &offset, const FString &name, UniformType type, size_t fieldsize, size_t alignment = 0);
+	void BuildStruct(const TMap<FString, UserUniformValue> &Uniforms);
 public:
-	ShaderUniforms()
+	UserUniforms() = default;
+	UserUniforms(const TMap<FString, UserUniformValue> &Uniforms)
 	{
-		memset(&Values, 0, sizeof(Values));
+		LoadUniforms(Uniforms);
 	}
 
-	~ShaderUniforms()
+	~UserUniforms()
 	{
-		if (mBuffer != nullptr)
-			delete mBuffer;
+		if(UniformStruct) delete[] UniformStruct;
 	}
 
-	int BindingPoint() const
-	{
-		return bindingpoint;
-	}
+	//must only be called once
+	void LoadUniforms(const TMap<FString, UserUniformValue> &Uniforms);
+	void WriteUniforms(UniformStructHolder &Data) const;
 
-	FString CreateDeclaration(const char *name, const std::vector<UniformFieldDesc> &fields)
-	{
-		mFields = fields;
-		return UniformBlockDecl::Create(name, fields, bindingpoint);
-	}
 
-	void Init()
-	{
-		if (mBuffer == nullptr)
-			mBuffer = screen->CreateDataBuffer(bindingpoint, false, false);
-	}
+	int UniformStructSize = 0;
+	uint8_t * UniformStruct = nullptr;
 
-	void SetData()
-	{
-		if (mBuffer != nullptr)
-			mBuffer->SetData(sizeof(T), &Values, BufferUsageType::Static);
-	}
+	UniformField GetField(const FString &name);
 
-	IDataBuffer* GetBuffer() const
-	{
-		// OpenGL needs to mess around with this in ways that should not be part of the interface.
-		return mBuffer;
-	}
-
-	T *operator->() { return &Values; }
-	const T *operator->() const { return &Values; }
-
-	T Values;
-
-private:
-	ShaderUniforms(const ShaderUniforms &) = delete;
-	ShaderUniforms &operator=(const ShaderUniforms &) = delete;
-
-    IDataBuffer *mBuffer = nullptr;
-	std::vector<UniformFieldDesc> mFields;
+	std::vector<UniformFieldDesc> Fields;
+	TMap<FString, size_t> FieldNames;
 };
-
-

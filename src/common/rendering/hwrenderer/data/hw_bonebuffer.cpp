@@ -23,6 +23,7 @@
 #include "hw_bonebuffer.h"
 #include "hw_dynlightdata.h"
 #include "shaderuniforms.h"
+#include "v_video.h"
 
 static const int BONE_SIZE = (16*sizeof(float));
 

@@ -52,7 +52,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 	mShaderIndex = SHADER_Default;
 	sourcetex = tx;
 	auto imgtex = tx->GetTexture();
-	mTextureLayers.Push({ imgtex, scaleflags, -1 });
+	mTextureLayers.Push({ imgtex, scaleflags });
 
 	if (tx->GetUseType() == ETextureType::SWCanvas && static_cast<FWrapperTexture*>(imgtex)->GetColorFormat() == 0)
 	{
@@ -69,7 +69,6 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			mShaderIndex = tx->GetShaderIndex();
 		}
-		mTextureLayers.Last().clampflags = CLAMP_CAMTEX;
 		// no additional layers for cameratexture
 	}
 	else
@@ -83,7 +82,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Specular.get() })
 			{
-				mTextureLayers.Push({ texture, 0, -1 });
+				mTextureLayers.Push({ texture, 0 });
 			}
 			mShaderIndex = SHADER_Specular;
 		}
@@ -91,7 +90,7 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		{
 			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Metallic.get(), tx->Layers->Roughness.get(), tx->Layers->AmbientOcclusion.get() })
 			{
-				mTextureLayers.Push({ texture, 0, -1 });
+				mTextureLayers.Push({ texture, 0 });
 			}
 			mShaderIndex = SHADER_PBR;
 		}
@@ -101,49 +100,71 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 		auto placeholder = TexMan.GameByIndex(1);
 		if (tx->Brightmap.get())
 		{
-			mTextureLayers.Push({ tx->Brightmap.get(), scaleflags, -1 });
+			mTextureLayers.Push({ tx->Brightmap.get(), scaleflags });
 			mLayerFlags |= TEXF_Brightmap;
 		}
-		else	
+		else
 		{ 
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 		if (tx->Layers && tx->Layers->Detailmap.get())
 		{
-			mTextureLayers.Push({ tx->Layers->Detailmap.get(), 0, CLAMP_NONE });
+			mTextureLayers.Push({ tx->Layers->Detailmap.get(), 0 });
 			mLayerFlags |= TEXF_Detailmap;
 		}
 		else
 		{
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 		if (tx->Layers && tx->Layers->Glowmap.get())
 		{
-			mTextureLayers.Push({ tx->Layers->Glowmap.get(), scaleflags, -1 });
+			mTextureLayers.Push({ tx->Layers->Glowmap.get(), scaleflags });
 			mLayerFlags |= TEXF_Glowmap;
 		}
 		else
 		{
-			mTextureLayers.Push({ placeholder->GetTexture(), 0, -1 });
+			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
 
+		mNumNonMaterialLayers = mTextureLayers.Size();
+
 		auto index = tx->GetShaderIndex();
+
+		const auto globalshader = mShaderIndex < FIRST_USER_SHADER ? &globalshaders[mShaderIndex] : &nullglobalshader;
+
 		if (gl_customshader)
 		{
-			if (index >= FIRST_USER_SHADER)
+			if (index >= FIRST_USER_SHADER || globalshader->shaderindex >= FIRST_USER_SHADER)
 			{
-				const UserShaderDesc& usershader = usershaders[index - FIRST_USER_SHADER];
-				if (usershader.shaderType == mShaderIndex) // Only apply user shader if it matches the expected material
+				if (index >= FIRST_USER_SHADER && usershaders[index - FIRST_USER_SHADER].shaderType == mShaderIndex) // Only apply user shader if it matches the expected material
 				{
 					if (tx->Layers)
 					{
+						size_t i = 0;
 						for (auto& texture : tx->Layers->CustomShaderTextures)
 						{
-							if (texture == nullptr) continue;
-							mTextureLayers.Push({ texture.get(), 0 });	// scalability should be user-definable.
+							if (texture != nullptr)
+							{
+								mTextureLayers.Push({ texture.get(), 0, tx->Layers->CustomShaderTextureSampling[i]});	// scalability should be user-definable.
+							}
+							i++;
 						}
 					}
 					mShaderIndex = index;
+				}
+				else if(mShaderIndex < FIRST_USER_SHADER && globalshader->shaderindex >= FIRST_USER_SHADER)
+				{
+					size_t i = 0;
+					for (auto& texture : globalshader->CustomShaderTextures)
+					{
+						if (texture != nullptr)
+						{
+							mTextureLayers.Push({texture.get(), 0, globalshader->CustomShaderTextureSampling[i]});	// scalability should be user-definable.
+						}
+						i++;
+					}
+
+					mShaderIndex = globalshader->shaderindex;
 				}
 			}
 		}
@@ -176,7 +197,7 @@ IHardwareTexture* FMaterial::GetLayer(int i, int translation, MaterialLayerInfo*
 {
 	if ((mScaleFlags & CTF_Indexed) && i > 0 && layercallback)
 	{
-		static MaterialLayerInfo deflayer = { nullptr, 0, CLAMP_XY };
+		static MaterialLayerInfo deflayer = { nullptr, 0 };
 		if (i == 1 || i == 2)
 		{
 			if (pLayer) *pLayer = &deflayer;

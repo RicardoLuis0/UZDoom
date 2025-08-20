@@ -4006,6 +4006,8 @@ void D_Cleanup()
 	{
 		*(afunc->VMPointer) = NULL;
 	});
+
+	CleanupGlobalShaders();
 	
 	GC::DelSoftRootHead();
 	

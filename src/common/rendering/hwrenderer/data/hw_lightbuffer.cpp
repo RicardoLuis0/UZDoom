@@ -28,6 +28,7 @@
 #include "hw_lightbuffer.h"
 #include "hw_dynlightdata.h"
 #include "shaderuniforms.h"
+#include "v_video.h"
 
 static const int ELEMENTS_PER_LIGHT = 4;			// each light needs 4 vec4's.
 static const int ELEMENT_SIZE = (4*sizeof(float));

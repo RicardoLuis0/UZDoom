@@ -337,7 +337,9 @@ void FGLRenderState::ApplyMaterial(FMaterial *mat, int clampmode, int translatio
 
 	int maxbound = 0;
 
-	int numLayers = mat->NumLayers();
+	const GlobalShaderDesc& globalshader = *GetGlobalShader(mMaterial.globalShaderAddr);
+
+	int numLayers = globalshader ? mat->NumNonMaterialLayers() : mat->NumLayers();
 	MaterialLayerInfo* layer;
 	auto base = static_cast<FHardwareTexture*>(mat->GetLayer(0, translation, &layer));
 
@@ -351,6 +353,23 @@ void FGLRenderState::ApplyMaterial(FMaterial *mat, int clampmode, int translatio
 				// fixme: Upscale flags must be disabled for certain layers.
 				systex->BindOrCreate(layer->layerTexture, i, clampmode, 0, layer->scaleFlags);
 				maxbound = i;
+			}
+
+			if(globalshader)
+			{
+				size_t i = 0;
+				for (auto& texture : globalshader.CustomShaderTextures)
+				{
+					if (texture != nullptr)
+					{
+						FHardwareTexture *tex = static_cast<FHardwareTexture*>(texture.get()->GetHardwareTexture(0, 0));
+						tex->BindOrCreate(texture.get(), numLayers, CLAMP_NONE, 0, 0);
+
+						maxbound = i;
+					}
+					i++;
+					numLayers++;
+				}
 			}
 		}
 		else

@@ -12,7 +12,7 @@ struct MaterialLayerInfo
 {
 	FTexture* layerTexture;
 	int scaleFlags;
-	int clampflags;
+	MaterialLayerSampling layerFiltering = MaterialLayerSampling::Default;
 };
 
 //===========================================================================
@@ -28,6 +28,8 @@ class FMaterial
 	int mShaderIndex;
 	int mLayerFlags = 0;
 	int mScaleFlags;
+
+	int mNumNonMaterialLayers = 0;
 
 public:
 	static void SetLayerCallback(IHardwareTexture* (*layercallback)(int layer, int translation));
@@ -63,6 +65,11 @@ public:
 	int NumLayers() const
 	{
 		return mTextureLayers.Size();
+	}
+
+	int NumNonMaterialLayers() const
+	{
+		return mNumNonMaterialLayers;
 	}
 
 	IHardwareTexture *GetLayer(int i, int translation, MaterialLayerInfo **pLayer = nullptr) const;

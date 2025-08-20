@@ -3,6 +3,8 @@
 #include "zstring.h"
 #include "tarray.h"
 
+#include "shaderuniforms.h"
+
 enum class PostProcessUniformType
 {
 	Undefined,
@@ -28,7 +30,7 @@ struct PostProcessShader
 	FString Name;
 	bool Enabled = false;
 
-	TMap<FString, PostProcessUniformValue> Uniforms;
+	UserUniforms Uniforms;
 	TMap<FString, FString> Textures;
 };
 

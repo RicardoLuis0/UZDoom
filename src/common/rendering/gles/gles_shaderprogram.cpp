@@ -277,7 +277,7 @@ void FPresentShaderBase::Init(const char * vtx_shader_name, const char * program
 	{
 		int index = -1;
 		UniformFieldDesc desc = Uniforms.mFields[n];
-		index = glGetUniformLocation(mShader->mProgram, desc.Name);
+		index = glGetUniformLocation(mShader->mProgram, desc.Name.GetChars());
 		Uniforms.UniformLocation[n] = index;
 	}
 }

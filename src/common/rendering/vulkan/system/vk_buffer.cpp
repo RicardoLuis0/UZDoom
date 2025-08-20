@@ -24,6 +24,7 @@
 #include "vk_hwbuffer.h"
 #include "vulkan/renderer/vk_streambuffer.h"
 #include "hwrenderer/data/shaderuniforms.h"
+#include "v_video.h"
 
 VkBufferManager::VkBufferManager(VulkanRenderDevice* fb) : fb(fb)
 {

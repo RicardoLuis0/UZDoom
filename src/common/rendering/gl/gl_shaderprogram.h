@@ -4,6 +4,94 @@
 #include "gl_system.h"
 #include "gl_shader.h"
 #include "hwrenderer/postprocessing/hw_postprocess.h"
+#include "hwrenderer/data/shaderuniforms.h"
+
+class UniformBlockDecl
+{
+public:
+	static FString Create(const char *name, const std::vector<UniformFieldDesc> &fields, int bindingpoint)
+	{
+		FString decl;
+		FString layout;
+		if (bindingpoint == -1)
+		{
+			layout = "push_constant";
+		}
+		else if (screen->glslversion < 4.20)
+		{
+			layout = "std140";
+		}
+		else
+		{
+			layout.Format("std140, binding = %d", bindingpoint);
+		}
+		decl.Format("layout(%s) uniform %s\n{\n", layout.GetChars(), name);
+		for (size_t i = 0; i < fields.size(); i++)
+		{
+			decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
+		}
+		decl += "};\n";
+
+		return decl;
+	}
+};
+
+template<typename T, int bindingpoint>
+class ShaderUniforms
+{
+public:
+	ShaderUniforms()
+	{
+		memset(&Values, 0, sizeof(Values));
+	}
+
+	~ShaderUniforms()
+	{
+		if (mBuffer != nullptr)
+			delete mBuffer;
+	}
+
+	int BindingPoint() const
+	{
+		return bindingpoint;
+	}
+
+	FString CreateDeclaration(const char *name, const std::vector<UniformFieldDesc> &fields)
+	{
+		mFields = fields;
+		return UniformBlockDecl::Create(name, fields, bindingpoint);
+	}
+
+	void Init()
+	{
+		if (mBuffer == nullptr)
+			mBuffer = screen->CreateDataBuffer(bindingpoint, false, false);
+	}
+
+	void SetData()
+	{
+		if (mBuffer != nullptr)
+			mBuffer->SetData(sizeof(T), &Values, BufferUsageType::Static);
+	}
+
+	IDataBuffer* GetBuffer() const
+	{
+		// OpenGL needs to mess around with this in ways that should not be part of the interface.
+		return mBuffer;
+	}
+
+	T *operator->() { return &Values; }
+	const T *operator->() const { return &Values; }
+
+	T Values;
+
+private:
+	ShaderUniforms(const ShaderUniforms &) = delete;
+	ShaderUniforms &operator=(const ShaderUniforms &) = delete;
+
+	IDataBuffer *mBuffer = nullptr;
+	std::vector<UniformFieldDesc> mFields;
+};
 
 namespace OpenGLRenderer
 {

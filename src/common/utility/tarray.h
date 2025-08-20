@@ -1690,6 +1690,16 @@ protected:
 		return n;
 	}
 
+	const Node *GetNode(const KT key) const
+	{
+		const Node *n = FindKey(key);
+		if (n != NULL)
+		{
+			return n;
+		}
+		return NULL;
+	}
+
 	/* Perform a bit-wise copy of the node. Used when relocating a node in the table. */
 	void CopyNode(Node *dst, const Node *src)
 	{
