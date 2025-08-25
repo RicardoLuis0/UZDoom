@@ -304,6 +304,18 @@ FString ProcessShaderError(const char * shaderError, TArray<FString> &filenames_
 	return err;
 }
 
+static void BindUBO(GLuint hShader, const GLchar * name, GLuint binding)
+{
+	GLuint index = glGetUniformBlockIndex(hShader, name);
+	if (index != GL_INVALID_INDEX) glUniformBlockBinding(hShader, index, binding);
+}
+
+static void BindSampler(GLuint hShader, const GLchar * name, GLuint texture)
+{
+	GLuint index = glGetUniformLocation(hShader, name);
+	if (index != GL_INVALID_INDEX) glUniform1i(index, texture);
+}
+
 bool FShader::Load(const char * name, const char * vert_prog_lump, const char * frag_prog_lump, const char * proc_prog_lump, const char * light_fragprog, const char * defines)
 {
 	FString error;
@@ -485,17 +497,34 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	assert(screen->mLights != NULL);
 	assert(screen->mBones != NULL);
 
-
 	if ((gl.flags & RFL_SHADER_STORAGE_BUFFER) && screen->allowSSBO())
+	{
 		vp_comb << "#version 430 core\n#define SUPPORTS_SHADOWMAPS\n";
-	else 
-		vp_comb << "#version 330 core\n";
-
-	bool lightbuffertype = screen->mLights->GetBufferType();
-	if (!lightbuffertype)
-		vp_comb.AppendFormat("#define NUM_UBO_LIGHTS %d\n#define NUM_UBO_BONES %d\n", screen->mLights->GetBlockSize(), screen->mBones->GetBlockSize());
+	}
 	else
-		vp_comb << "#define SHADER_STORAGE_LIGHTS\n#define SHADER_STORAGE_BONES\n";
+	{
+		vp_comb << "#version 330 core\n";
+	}
+
+	bool lightbuffer_is_ssbo = screen->mLights->IsSSBO();
+	bool bonebuffer_is_ssbo = screen->mBones->IsSSBO();
+	if (!lightbuffer_is_ssbo)
+	{
+		vp_comb.AppendFormat("#define NUM_UBO_LIGHTS %d\n", screen->mLights->GetBlockSize());
+	}
+	else
+	{
+		vp_comb << "#define SHADER_STORAGE_LIGHTS\n";
+	}
+
+	if (!bonebuffer_is_ssbo)
+	{
+		vp_comb.AppendFormat("#define NUM_UBO_BONES %d\n", screen->mBones->GetBlockSize());
+	}
+	else
+	{
+		vp_comb << "#define SHADER_STORAGE_BONES\n";
+	}
 
 	FString fp_comb = vp_comb;
 	vp_comb << defines << i_data.GetChars();
@@ -769,33 +798,39 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	texturematrix_index = glGetUniformLocation(hShader, "TextureMatrix");
 	normalmodelmatrix_index = glGetUniformLocation(hShader, "NormalModelMatrix");
 
-	if (!lightbuffertype)
+	if(!lightbuffer_is_ssbo)
 	{
-		int tempindex = glGetUniformBlockIndex(hShader, "LightBufferUBO");
-		if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, LIGHTBUF_BINDINGPOINT);
-
-		tempindex = glGetUniformBlockIndex(hShader, "BoneBufferUBO");
-		if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, BONEBUF_BINDINGPOINT);
+		BindUBO(hShader, "LightBufferUBO", LIGHTBUF_BINDINGPOINT);
 	}
-	int tempindex = glGetUniformBlockIndex(hShader, "ViewpointUBO");
-	if (tempindex != -1) glUniformBlockBinding(hShader, tempindex, VIEWPOINT_BINDINGPOINT);
+
+	if(!bonebuffer_is_ssbo)
+	{
+		BindUBO(hShader, "BoneBufferUBO", BONEBUF_BINDINGPOINT);
+	}
+
+	BindUBO(hShader, "ViewpointUBO", VIEWPOINT_BINDINGPOINT);
 
 	glUseProgram(hShader);
 
 	// set up other texture units (if needed by the shader)
 	for (int i = 2; i<16; i++)
 	{
-		char stringbuf[20];
-		mysnprintf(stringbuf, 20, "texture%d", i);
-		tempindex = glGetUniformLocation(hShader, stringbuf);
-		if (tempindex != -1) glUniform1i(tempindex, i - 1);
+
+		char stringbuf[10] = "texture1\0";
+		if(i >= 10)
+		{
+			stringbuf[9] = '0' + (i - 10);
+		}
+		else
+		{
+			stringbuf[8] = '0' + i;
+		}
+
+		BindSampler(hShader, stringbuf, i);
 	}
 
-	int shadowmapindex = glGetUniformLocation(hShader, "ShadowMap");
-	if (shadowmapindex != -1) glUniform1i(shadowmapindex, 16);
-
-	int lightmapindex = glGetUniformLocation(hShader, "LightMap");
-	if (lightmapindex != -1) glUniform1i(lightmapindex, 17);
+	BindSampler(hShader, "ShadowMap", 16);
+	BindSampler(hShader, "LightMap", 17);
 
 	glUseProgram(0);
 	return true;

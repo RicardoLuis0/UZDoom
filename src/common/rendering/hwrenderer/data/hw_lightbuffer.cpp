@@ -30,57 +30,32 @@
 #include "shaderuniforms.h"
 #include "v_video.h"
 
-static const int ELEMENTS_PER_LIGHT = 4;			// each light needs 4 vec4's.
-static const int ELEMENT_SIZE = (4*sizeof(float));
-
-
-FLightBuffer::FLightBuffer(int pipelineNbr):
-	mPipelineNbr(pipelineNbr)
+FBufferManager::FBufferManager(unsigned bufferSize, unsigned elementSize, unsigned bindingPoint, int pipelineNbr) : mBufferSize(bufferSize), mElementSize(elementSize), mByteSize(bufferSize * elementSize), mBindingPoint(bindingPoint), mPipelineNbr(pipelineNbr > 0 ? pipelineNbr : 1)
 {
-	int maxNumberOfLights = 80000;
+	mBufferSSBO = screen->useSSBO();
 
-	mBufferSize = maxNumberOfLights * ELEMENTS_PER_LIGHT;
-	mByteSize = mBufferSize * ELEMENT_SIZE;
-
-	if (screen->useSSBO())
+	if(mBufferSSBO)
 	{
-		mBufferType = true;
 		mBlockAlign = 0;
 		mBlockSize = mBufferSize;
 		mMaxUploadSize = mBlockSize;
 	}
 	else
 	{
-		mBufferType = false;
-		mBlockSize = screen->maxuniformblock / ELEMENT_SIZE;
-		mBlockAlign = screen->uniformblockalignment / ELEMENT_SIZE;
+		mBlockSize = screen->maxuniformblock / mElementSize;
+		mBlockAlign = (screen->uniformblockalignment <= mElementSize) ? 1 : (screen->uniformblockalignment / mElementSize);
 		mMaxUploadSize = (mBlockSize - mBlockAlign);
-
-		//mByteSize += screen->maxuniformblock;	// to avoid mapping beyond the end of the buffer. REMOVED this...This can try to allocate 100's of MB..
 	}
 
 	for (int n = 0; n < mPipelineNbr; n++)
 	{
-		mBufferPipeline[n] = screen->CreateDataBuffer(LIGHTBUF_BINDINGPOINT, mBufferType, false);
+		mBufferPipeline[n] = screen->CreateDataBuffer(mBindingPoint, mBufferSSBO, false);
 		mBufferPipeline[n]->SetData(mByteSize, nullptr, BufferUsageType::Persistent);
 	}
 
-	Clear();
-}
-
-FLightBuffer::~FLightBuffer()
-{
-	delete mBuffer;
-}
-
-void FLightBuffer::Clear()
-{
 	mIndex = 0;
-
-	mPipelinePos++;
-	mPipelinePos %= mPipelineNbr;
-
-	mBuffer = mBufferPipeline[mPipelinePos];
+	mPipelinePos = 0;
+	mBuffer = mBufferPipeline[0];
 }
 
 int FLightBuffer::UploadLights(FDynLightData &data)
@@ -121,10 +96,10 @@ int FLightBuffer::UploadLights(FDynLightData &data)
 	{
 		float *copyptr = mBufferPointer + thisindex*4;
 
-		memcpy(&copyptr[0], parmcnt, ELEMENT_SIZE);
-		memcpy(&copyptr[4], &data.arrays[0][0], size0 * ELEMENT_SIZE);
-		memcpy(&copyptr[4 + 4*size0], &data.arrays[1][0], size1 * ELEMENT_SIZE);
-		memcpy(&copyptr[4 + 4*(size0 + size1)], &data.arrays[2][0], size2 * ELEMENT_SIZE);
+		memcpy(&copyptr[0], parmcnt, LIGHTBUFFER_ELEMENT_SIZE);
+		memcpy(&copyptr[4], &data.arrays[0][0], size0 * LIGHTBUFFER_ELEMENT_SIZE);
+		memcpy(&copyptr[4 + 4*size0], &data.arrays[1][0], size1 * LIGHTBUFFER_ELEMENT_SIZE);
+		memcpy(&copyptr[4 + 4*(size0 + size1)], &data.arrays[2][0], size2 * LIGHTBUFFER_ELEMENT_SIZE);
 		return thisindex;
 	}
 	else
@@ -132,16 +107,5 @@ int FLightBuffer::UploadLights(FDynLightData &data)
 		return -1;	// Buffer is full. Since it is being used live at the point of the upload we cannot do much here but to abort.
 	}
 }
-
-int FLightBuffer::GetBinding(unsigned int index, size_t* pOffset, size_t* pSize)
-{
-	// this function will only get called if a uniform buffer is used. For a shader storage buffer we only need to bind the buffer once at the start.
-	unsigned int offset = (index / mBlockAlign) * mBlockAlign;
-
-	*pOffset = offset * ELEMENT_SIZE;
-	*pSize = mBlockSize * ELEMENT_SIZE;
-	return (index - offset);
-}
-
 
 

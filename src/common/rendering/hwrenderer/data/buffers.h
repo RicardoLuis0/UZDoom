@@ -1,7 +1,8 @@
 #pragma once
 
-#include <stddef.h>
-#include <assert.h>
+#include <cstddef>
+#include <cassert>
+#include <atomic>
 
 class FRenderState;
 
@@ -103,5 +104,73 @@ class IDataBuffer : virtual public IBuffer
 	// Can be either uniform or shader storage buffer, depending on its needs.
 public:
 	virtual void BindRange(FRenderState *state, size_t start, size_t length) = 0;
+};
 
+struct FBufferManager
+{
+protected:
+	IDataBuffer *mBuffer;
+	IDataBuffer* mBufferPipeline[HW_MAX_PIPELINE_BUFFERS];
+	int mPipelineNbr;
+	int mPipelinePos = 0;
+
+	bool mBufferSSBO;
+	std::atomic<unsigned int> mIndex;
+	unsigned int mBlockAlign;
+	unsigned int mBlockSize;
+	const unsigned int mBufferSize;
+	const unsigned int mElementSize;
+	const unsigned int mByteSize;
+	const unsigned int mBindingPoint;
+	unsigned int mMaxUploadSize;
+public:
+
+	FBufferManager(unsigned bufferSize, unsigned elementSize, unsigned bindingPoint, int pipelineNbr = 1);
+
+	virtual ~FBufferManager()
+	{
+		for (int n = 0; n < mPipelineNbr; n++)
+		{
+			delete mBufferPipeline[n];
+		}
+	}
+
+	void Clear()
+	{
+		mIndex = 0;
+
+		if(mPipelineNbr > 1)
+		{
+			mPipelinePos++;
+			mPipelinePos %= mPipelineNbr;
+
+			mBuffer = mBufferPipeline[mPipelinePos];
+		}
+	}
+
+	int GetBinding(unsigned int index, size_t* pOffset, size_t* pSize)
+	{
+		// this function will only get called if a uniform buffer is used. For a shader storage buffer we only need to bind the buffer once at the start.
+		unsigned int offset = (index / mBlockAlign) * mBlockAlign;
+
+		*pOffset = offset * mElementSize;
+		*pSize = mBlockSize * mElementSize;
+		return (index - offset);
+	}
+
+	void Map() { mBuffer->Map(); }
+	void Unmap() { mBuffer->Unmap(); }
+	unsigned int GetBlockSize() const { return mBlockSize; }
+	bool IsSSBO() const { return mBufferSSBO; }
+
+	// Only for GLES to determin how much data is in the buffer
+	int GetCurrentIndex() { return mIndex; };
+
+	// OpenGL needs the buffer to mess around with the binding.
+	IDataBuffer* GetBuffer() const
+	{
+		return mBuffer;
+	}
+
+	size_t mLastMappedIndex = SIZE_MAX;
 };

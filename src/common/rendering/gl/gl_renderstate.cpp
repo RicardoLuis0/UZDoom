@@ -88,6 +88,23 @@ void FGLRenderState::Reset()
 //
 //==========================================================================
 
+static int ApplyBuffer(int index, FBufferManager *buffer)
+{
+	// Mess alert for crappy AncientGL!
+	if (!buffer->IsSSBO() && index >= 0)
+	{
+		size_t start, size;
+		index = buffer->GetBinding(index, &start, &size);
+
+		if (start != buffer->mLastMappedIndex || screen->mPipelineNbr > 1) // If multiple buffers always bind
+		{
+			buffer->mLastMappedIndex = start;
+			buffer->GetBuffer()->BindRange(nullptr, start, size);
+		}
+	}
+	return index;
+}
+
 bool FGLRenderState::ApplyShader()
 {
 	static const float nulvec[] = { 0.f, 0.f, 0.f, 0.f };
@@ -197,35 +214,8 @@ bool FGLRenderState::ApplyShader()
 		matrixToGL(identityMatrix, activeShader->normalmodelmatrix_index);
 	}
 
-	int index = mLightIndex;
-	// Mess alert for crappy AncientGL!
-	if (!screen->mLights->GetBufferType() && index >= 0)
-	{
-		size_t start, size;
-		index = screen->mLights->GetBinding(index, &start, &size);
-
-		if (start != mLastMappedLightIndex || screen->mPipelineNbr > 1) // If multiple buffers always bind
-		{
-			mLastMappedLightIndex = start;
-			static_cast<GLDataBuffer*>(screen->mLights->GetBuffer())->BindRange(nullptr, start, size);
-		}
-	}
-
-	activeShader->muLightIndex.Set(index);
-
-	index = mBoneIndexBase;
-	if (!screen->mBones->GetBufferType() && index >= 0) // Uniform buffer fallback support
-	{
-		size_t start, size;
-		index = screen->mBones->GetBinding(index, &start, &size);
-
-		if (start != mLastMappedBoneIndexBase || screen->mPipelineNbr > 1) // If multiple buffers always bind
-		{
-			mLastMappedBoneIndexBase = start;
-			static_cast<GLDataBuffer*>(screen->mBones->GetBuffer())->BindRange(nullptr, start, size);
-		}
-	}
-	activeShader->muBoneIndexBase.Set(index);
+	activeShader->muLightIndex.Set(ApplyBuffer(mLightIndex, screen->mLights));
+	activeShader->muBoneIndexBase.Set(ApplyBuffer(mBoneIndexBase, screen->mBones));
 
 	return true;
 }

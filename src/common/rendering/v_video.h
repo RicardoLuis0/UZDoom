@@ -55,12 +55,12 @@ class IVertexBuffer;
 class IDataBuffer;
 class FFlatVertexBuffer;
 class HWViewpointBuffer;
-class FLightBuffer;
+struct FLightBuffer;
 struct HWDrawInfo;
 class FMaterial;
 class FGameTexture;
 class FRenderState;
-class BoneBuffer;
+struct FBoneBuffer;
 
 enum EHWCaps
 {
@@ -144,7 +144,7 @@ public:
 	FFlatVertexBuffer *mVertexData = nullptr;	// Global vertex data
 	HWViewpointBuffer *mViewpoints = nullptr;	// Viewpoint render data.
 	FLightBuffer *mLights = nullptr;			// Dynamic lights
-	BoneBuffer* mBones = nullptr;				// Model bones
+	FBoneBuffer *mBones = nullptr;				// Model bones
 	IShadowMap mShadowMap;
 
 	int mGameScreenWidth = 0;
