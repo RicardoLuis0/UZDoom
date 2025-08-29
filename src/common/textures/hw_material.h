@@ -12,7 +12,7 @@ struct MaterialLayerInfo
 {
 	FTexture* layerTexture;
 	int scaleFlags;
-	MaterialLayerSampling layerFiltering = MaterialLayerSampling::Default;
+	MaterialLayerSampling layerFiltering = MaterialLayerSampling::Default; // TODO make use of filtering
 };
 
 //===========================================================================

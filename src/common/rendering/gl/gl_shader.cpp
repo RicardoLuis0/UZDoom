@@ -832,6 +832,8 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	BindSampler(hShader, "ShadowMap", 16);
 	BindSampler(hShader, "LightMap", 17);
 
+	//TODO hook up actor uniform buffers
+
 	glUseProgram(0);
 	return true;
 }

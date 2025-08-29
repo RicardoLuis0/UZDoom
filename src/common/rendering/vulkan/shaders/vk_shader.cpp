@@ -381,6 +381,8 @@ std::unique_ptr<VulkanShader> VkShaderManager::LoadVertShader(FString shadername
 	code << "#line 1\n";
 	code << LoadPrivateShaderLump(vert_lump).GetChars() << "\n";
 
+	//TODO hook up actor uniform buffers
+
 	return ShaderBuilder()
 		.Type(ShaderType::Vertex)
 		.AddSource(shadername.GetChars(), code.GetChars())
