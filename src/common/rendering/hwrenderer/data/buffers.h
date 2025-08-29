@@ -104,6 +104,7 @@ class IDataBuffer : virtual public IBuffer
 	// Can be either uniform or shader storage buffer, depending on its needs.
 public:
 	virtual void BindRange(FRenderState *state, size_t start, size_t length) = 0;
+	virtual void BindBase() = 0;
 };
 
 struct FBufferManager

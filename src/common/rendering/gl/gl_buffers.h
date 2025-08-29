@@ -74,7 +74,7 @@ class GLDataBuffer : public IDataBuffer, public GLBuffer
 public:
 	GLDataBuffer(int bindingpoint, bool is_ssbo);
 	virtual void BindRange(FRenderState* state, size_t start, size_t length) override;
-	void BindBase();
+	virtual void BindBase() override;
 };
 
 }

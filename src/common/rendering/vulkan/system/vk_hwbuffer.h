@@ -70,5 +70,7 @@ public:
 
 	void BindRange(FRenderState *state, size_t start, size_t length) override;
 
+	void BindBase() override {};
+
 	int bindingpoint;
 };

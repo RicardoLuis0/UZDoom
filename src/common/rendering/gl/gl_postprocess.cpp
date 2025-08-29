@@ -219,7 +219,7 @@ void FGLRenderer::DrawPresentTexture(const IntRect &box, bool applyGamma)
 	mPresentShader->Uniforms->Scale = { screen->mScreenViewport.width / (float)mBuffers->GetWidth(), screen->mScreenViewport.height / (float)mBuffers->GetHeight() };
 	mPresentShader->Uniforms->Offset = { 0.0f, 0.0f };
 	mPresentShader->Uniforms.SetData();
-	static_cast<GLDataBuffer*>(mPresentShader->Uniforms.GetBuffer())->BindBase();
+	mPresentShader->Uniforms.GetBuffer()->BindBase();
 	RenderScreenQuad();
 }
 

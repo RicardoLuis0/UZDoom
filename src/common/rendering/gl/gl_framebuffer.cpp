@@ -175,8 +175,8 @@ void OpenGLFrameBuffer::InitializeState()
 	mBones = new FBoneBuffer(screen->mPipelineNbr);
 	GLRenderer = new FGLRenderer(this);
 	GLRenderer->Initialize(GetWidth(), GetHeight());
-	static_cast<GLDataBuffer*>(mLights->GetBuffer())->BindBase();
-	static_cast<GLDataBuffer*>(mBones->GetBuffer())->BindBase();
+	mLights->GetBuffer()->BindBase();
+	mBones->GetBuffer()->BindBase();
 
 	mDebug = std::make_unique<FGLDebug>();
 	mDebug->Update();
@@ -442,9 +442,9 @@ void OpenGLFrameBuffer::UpdateShadowMap()
 
 		FGLPostProcessState savedState;
 
-		static_cast<GLDataBuffer*>(screen->mShadowMap.mLightList)->BindBase();
-		static_cast<GLDataBuffer*>(screen->mShadowMap.mNodesBuffer)->BindBase();
-		static_cast<GLDataBuffer*>(screen->mShadowMap.mLinesBuffer)->BindBase();
+		screen->mShadowMap.mLightList->BindBase();
+		screen->mShadowMap.mNodesBuffer->BindBase();
+		screen->mShadowMap.mLinesBuffer->BindBase();
 
 		GLRenderer->mBuffers->BindShadowMapFB();
 
@@ -452,7 +452,7 @@ void OpenGLFrameBuffer::UpdateShadowMap()
 		GLRenderer->mShadowMapShader->Uniforms->ShadowmapQuality = gl_shadowmap_quality;
 		GLRenderer->mShadowMapShader->Uniforms->NodesCount = screen->mShadowMap.NodesCount();
 		GLRenderer->mShadowMapShader->Uniforms.SetData();
-		static_cast<GLDataBuffer*>(GLRenderer->mShadowMapShader->Uniforms.GetBuffer())->BindBase();
+		GLRenderer->mShadowMapShader->Uniforms.GetBuffer()->BindBase();
 
 		glViewport(0, 0, gl_shadowmap_quality, 1024);
 		GLRenderer->RenderScreenQuad();

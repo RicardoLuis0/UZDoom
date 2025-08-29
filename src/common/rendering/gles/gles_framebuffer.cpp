@@ -158,8 +158,8 @@ void OpenGLFrameBuffer::InitializeState()
 	mBones = new FBoneBuffer(mPipelineNbr);
 	GLRenderer = new FGLRenderer(this);
 	GLRenderer->Initialize(GetWidth(), GetHeight());
-	static_cast<GLDataBuffer*>(mLights->GetBuffer())->BindBase();
-	static_cast<GLDataBuffer*>(mBones->GetBuffer())->BindBase();
+	mLights->GetBuffer()->BindBase();
+	mBones->GetBuffer()->BindBase();
 }
 
 //==========================================================================

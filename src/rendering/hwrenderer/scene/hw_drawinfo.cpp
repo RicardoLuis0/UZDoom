@@ -518,7 +518,6 @@ void HWDrawInfo::CreateScene(bool drawpsprites)
 	screen->mVertexData->Unmap();
 
 	ProcessAll.Unclock();
-
 }
 
 //-----------------------------------------------------------------------------
