@@ -124,9 +124,13 @@ void FHWModelRenderer::SetMaterial(FGameTexture *skin, bool clampNoFilter, FTran
 
 	int shader = state.getShaderIndex();
 
+	state.mUniforms.Clear();
+
 	if(shader >= FIRST_USER_SHADER && act && (act != lastAct || shader != lastShader))
 	{ // only re-bind uniforms if the actor or the shader have changed
 		usershaders[shader - FIRST_USER_SHADER].BindActorFields(act);
+
+		usershaders[shader - FIRST_USER_SHADER].Uniforms.WriteUniforms(state.mUniforms);
 	}
 
 	lastAct = act;

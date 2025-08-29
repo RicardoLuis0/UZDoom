@@ -249,11 +249,13 @@ protected:
 
 	EPassType mPassType = NORMAL_PASS;
 
+
 public:
 
 	uint64_t firstFrame = 0;
 	VSMatrix mModelMatrix;
 	VSMatrix mTextureMatrix;
+	UniformStructHolder mUniforms;
 
 public:
 
@@ -318,6 +320,7 @@ public:
 		mModelMatrix.loadIdentity();
 		mTextureMatrix.loadIdentity();
 		ClearClipSplit();
+		mUniforms.Clear();
 	}
 
 	void SetNormal(FVector3 norm)

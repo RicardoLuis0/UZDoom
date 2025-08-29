@@ -16,7 +16,7 @@ class FCanvasTexture;
 class FFlatVertexBuffer;
 class FSkyVertexBuffer;
 class HWPortal;
-class FLightBuffer;
+struct FLightBuffer;
 class DPSprite;
 class FGLRenderBuffers;
 class FGL2DDrawer;

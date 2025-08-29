@@ -140,7 +140,7 @@ public:
 	void EnableMultisampling(bool on) override;
 	void EnableLineSmooth(bool on) override;
 
-
+	std::unique_ptr<IDataBuffer> UniformsBuffer;
 };
 
 extern FGLRenderState gl_RenderState;

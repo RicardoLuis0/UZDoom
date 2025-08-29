@@ -118,6 +118,17 @@ bool FGLRenderState::ApplyShader()
 		activeShader->Bind();
 	}
 
+	if(!UniformsBuffer)
+	{
+		UniformsBuffer.reset(screen->CreateDataBuffer(MATERIALUNIFORMS_BINDINGPOINT, false, false));
+	}
+
+	if(mUniforms.sz > 0)
+	{
+		UniformsBuffer->SetData(mUniforms.sz, mUniforms.addr, BufferUsageType::Static); // static seems to work but should this be static or stream?
+		UniformsBuffer->BindBase();
+	}
+
 	int fogset = 0;
 
 	if (mFogEnabled)
