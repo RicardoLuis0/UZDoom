@@ -1833,7 +1833,8 @@ std::vector<VulkanCompatibleDevice> VulkanDeviceBuilder::FindDevices(const std::
 		if (info.Features.Features.samplerAnisotropy != VK_TRUE ||
 			info.Features.Features.fragmentStoresAndAtomics != VK_TRUE ||
 			info.Features.Features.multiDrawIndirect != VK_TRUE ||
-			info.Features.Features.independentBlend != VK_TRUE)
+			info.Features.Features.independentBlend != VK_TRUE ||
+			info.Features.Features.vertexPipelineStoresAndAtomics != VK_TRUE)
 			continue;
 
 		VulkanCompatibleDevice dev;
@@ -1858,6 +1859,7 @@ std::vector<VulkanCompatibleDevice> VulkanDeviceBuilder::FindDevices(const std::
 		enabledFeatures.Features.shaderClipDistance = deviceFeatures.Features.shaderClipDistance;
 		enabledFeatures.Features.multiDrawIndirect = deviceFeatures.Features.multiDrawIndirect;
 		enabledFeatures.Features.independentBlend = deviceFeatures.Features.independentBlend;
+		enabledFeatures.Features.vertexPipelineStoresAndAtomics = deviceFeatures.Features.vertexPipelineStoresAndAtomics;
 		enabledFeatures.BufferDeviceAddress.bufferDeviceAddress = deviceFeatures.BufferDeviceAddress.bufferDeviceAddress;
 		enabledFeatures.AccelerationStructure.accelerationStructure = deviceFeatures.AccelerationStructure.accelerationStructure;
 		enabledFeatures.RayQuery.rayQuery = deviceFeatures.RayQuery.rayQuery;
