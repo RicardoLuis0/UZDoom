@@ -1181,7 +1181,7 @@ FString CreateUniformBlockDecl(const char *name, const std::vector<UniformFieldD
 	decl.Format("layout(%s) %s %s\n{\n", layout.GetChars(), isSSBO ? "buffer" : "uniform", name);
 	for (size_t i = 0; i < fields.size(); i++)
 	{
-		decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
+		decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name.GetChars());
 	}
 	decl += "};\n";
 

@@ -73,7 +73,7 @@ public:
 		decl += "\n";
 		for (size_t i = 0; i < fields.size(); i++)
 		{
-			decl.AppendFormat("\tuniform %s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
+			decl.AppendFormat("\tuniform %s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name.GetChars());
 		}
 		decl += "\n";
 		return decl;
