@@ -33,7 +33,7 @@ VkPPShader::VkPPShader(VulkanRenderDevice* fb, PPShader *shader) : fb(fb)
 {
 	FString prolog;
 	if (!shader->Uniforms.empty())
-		prolog = UniformBlockDecl::Create("Uniforms", shader->Uniforms, -1);
+		prolog = CreateUniformBlockDecl("Uniforms", shader->Uniforms, -1);
 	prolog += shader->Defines;
 
 	VertexShader = ShaderBuilder()

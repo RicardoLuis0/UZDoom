@@ -50,6 +50,7 @@ public:
 	VulkanRenderDevice(void *hMonitor, bool fullscreen, std::shared_ptr<VulkanSurface> surface);
 	~VulkanRenderDevice();
 	bool IsVulkan() override { return true; }
+	bool Std430Allowed(bool isSSBO) override { return true; }
 
 	void Update() override;
 

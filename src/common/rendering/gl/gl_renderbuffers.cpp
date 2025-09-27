@@ -833,7 +833,7 @@ FShaderProgram *GLPPRenderState::GetGLShader(PPShader *shader)
 
 		FString prolog;
 		if (!shader->Uniforms.empty())
-			prolog = UniformBlockDecl::Create("Uniforms", shader->Uniforms, POSTPROCESS_BINDINGPOINT);
+			prolog = CreateUniformBlockDecl("Uniforms", shader->Uniforms, POSTPROCESS_BINDINGPOINT);
 		prolog += shader->Defines;
 
 		glshader->Compile(FShaderProgram::Vertex, shader->VertexShader.GetChars(), "", shader->Version);

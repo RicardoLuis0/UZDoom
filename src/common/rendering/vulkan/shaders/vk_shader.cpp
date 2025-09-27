@@ -30,6 +30,8 @@
 #include "version.h"
 #include "cmdlib.h"
 
+FString buildShaderInOut(bool vertex, bool forcelayout);
+
 ShaderIncludeResult VkShaderManager::OnInclude(FString headerName, FString includerName, size_t depth)
 {
 	if (depth > 8)
@@ -367,6 +369,48 @@ static const char *shaderBindings = R"(
 	vec4 noise4(vec4) { return vec4(0); }
 )";
 
+std::vector<BuiltinFieldDesc> vertexShaderInputs
+{
+	{"aPosition",		"", UniformType::Vec4,	FieldCondition::ALWAYS},		//0, VATTR_VERTEX
+	{"aTexCoord",		"", UniformType::Vec2,	FieldCondition::ALWAYS},		//1, VATTR_TEXCOORD
+	{"aColor",			"", UniformType::Vec4,	FieldCondition::ALWAYS},		//2, VATTR_COLOR
+	{"aVertex2",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//3, VATTR_VERTEX2
+	{"aNormal",			"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//4, VATTR_NORMAL
+	{"aNormal2",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//5, VATTR_NORMAL2
+	{"aLightmap",		"", UniformType::Vec3,	FieldCondition::NOTSIMPLE},		//6, VATTR_LIGHTMAP
+	{"aBoneWeight",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//7, VATTR_BONEWEIGHT
+	{"aBoneSelector",	"", UniformType::UVec4,	FieldCondition::NOTSIMPLE},		//8, VATTR_BONESELECTOR
+	/*
+	{"aDataIndex",		"", UniformType::Int},		//9, VATTR_UNIFORM_INDEXES -- vkdoom only
+	*/
+};
+
+std::vector<BuiltinFieldDesc> vertexShaderOutputs
+{
+	{"vTexCoord",		"",		UniformType::Vec4,	FieldCondition::ALWAYS},			//0
+	{"vColor",			"",		UniformType::Vec4,	FieldCondition::ALWAYS},			//1
+	{"pixelpos",		"",		UniformType::Vec4,	FieldCondition::ALWAYS},			//2
+	{"glowdist",		"",		UniformType::Vec3,	FieldCondition::NOTSIMPLE},			//3
+	{"gradientdist",	"",		UniformType::Vec3,	FieldCondition::NOTSIMPLE},			//4
+	{"vWorldNormal",	"",		UniformType::Vec4,	FieldCondition::ALWAYS},			//5
+	{"vEyeNormal",		"",		UniformType::Vec4,	FieldCondition::ALWAYS},			//6
+	{"ClipDistanceA",	"",		UniformType::Vec4,	FieldCondition::NO_CLIPDISTANCE},	//7
+	{"ClipDistanceB",	"",		UniformType::Vec4,	FieldCondition::NO_CLIPDISTANCE},	//8
+	{"vLightmap",		"",		UniformType::Vec3,	FieldCondition::ALWAYS},			//9
+	/*
+	{"vLightmapIndex",	"flat",	UniformType::Int,	FieldCondition::ALWAYS},			//10 -- vkdoom only
+	{"uDataIndex",		"flat", UniformType::Int,	FieldCondition::USELEVELMESH},		//11 -- vkdoom only
+	{"vLightColor",		"",		UniformType::Vec3,	FieldCondition::SHADE_VERTEX},		//12 -- vkdoom only
+	*/
+};
+
+std::vector<BuiltinFieldDesc> fragShaderOutputs
+{
+	{"FragColor",		"",		UniformType::Vec4, FieldCondition::ALWAYS},			//0
+	{"FragFog",			"",		UniformType::Vec4, FieldCondition::GBUFFER_PASS},	//1
+	{"FragNormal",		"",		UniformType::Vec4, FieldCondition::GBUFFER_PASS},	//2
+};
+
 std::unique_ptr<VulkanShader> VkShaderManager::LoadVertShader(FString shadername, const char *vert_lump, const char *defines)
 {
 	FString code = GetTargetGlslVersion();
@@ -378,7 +422,7 @@ std::unique_ptr<VulkanShader> VkShaderManager::LoadVertShader(FString shadername
 #endif
 	code << shaderBindings;
 	if (!fb->device->EnabledFeatures.Features.shaderClipDistance) code << "#define NO_CLIPDISTANCE_SUPPORT\n";
-	code << "#line 1\n";
+	code << buildShaderInOut(true, true) << "#line 1\n";
 	code << LoadPrivateShaderLump(vert_lump).GetChars() << "\n";
 
 	//TODO hook up actor uniform buffers
@@ -411,7 +455,7 @@ std::unique_ptr<VulkanShader> VkShaderManager::LoadFragShader(FString shadername
 	if (!alphatest) code << "#define NO_ALPHATEST\n";
 	if (gbufferpass) code << "#define GBUFFER_PASS\n";
 
-	code << "\n#line 1\n";
+	code << buildShaderInOut(false, true) << "\n#line 1\n";
 	code << LoadPrivateShaderLump(frag_lump).GetChars() << "\n";
 
 	if (material_lump)

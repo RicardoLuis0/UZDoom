@@ -6,36 +6,6 @@
 #include "hwrenderer/postprocessing/hw_postprocess.h"
 #include "hwrenderer/data/shaderuniforms.h"
 
-class UniformBlockDecl
-{
-public:
-	static FString Create(const char *name, const std::vector<UniformFieldDesc> &fields, int bindingpoint)
-	{
-		FString decl;
-		FString layout;
-		if (bindingpoint == -1)
-		{
-			layout = "push_constant";
-		}
-		else if (screen->glslversion < 4.20)
-		{
-			layout = "std140";
-		}
-		else
-		{
-			layout.Format("std140, binding = %d", bindingpoint);
-		}
-		decl.Format("layout(%s) uniform %s\n{\n", layout.GetChars(), name);
-		for (size_t i = 0; i < fields.size(); i++)
-		{
-			decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
-		}
-		decl += "};\n";
-
-		return decl;
-	}
-};
-
 template<typename T, int bindingpoint>
 class ShaderUniforms
 {
@@ -59,7 +29,7 @@ public:
 	FString CreateDeclaration(const char *name, const std::vector<UniformFieldDesc> &fields)
 	{
 		mFields = fields;
-		return UniformBlockDecl::Create(name, fields, bindingpoint);
+		return CreateUniformBlockDecl(name, fields, bindingpoint);
 	}
 
 	void Init()

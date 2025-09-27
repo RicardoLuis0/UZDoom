@@ -79,6 +79,23 @@ struct VaryingFieldDesc
 	UniformType Type;
 };
 
+enum class FieldCondition
+{
+	ALWAYS,
+	NOTSIMPLE,
+	GBUFFER_PASS,
+	NO_CLIPDISTANCE,
+};
+
+struct BuiltinFieldDesc : public VaryingFieldDesc
+{
+	FieldCondition cond;
+};
+
+extern std::vector<BuiltinFieldDesc> vertexShaderInputs;
+extern std::vector<BuiltinFieldDesc> vertexShaderOutputs;
+extern std::vector<BuiltinFieldDesc> fragShaderOutputs;
+
 struct UniformField
 {
 	UniformType Type = UniformType::Undefined;
@@ -158,6 +175,8 @@ public:
 	const uint8_t * addr = nullptr;
 };
 
+FString CreateUniformBlockDecl(const char *name, const std::vector<UniformFieldDesc> &fields, int bindingpoint, int set = 0, bool isSSBO = false, bool use430 = false);
+
 class UserUniforms
 {
 	void AddUniformField(size_t &offset, const FString &name, UniformType type, size_t fieldsize, size_t alignment = 0);
@@ -174,10 +193,15 @@ public:
 		if(UniformStruct) delete[] UniformStruct;
 	}
 
-	//must only be called once
-	void LoadUniforms(const TMap<FString, UserUniformValue> &Uniforms);
+	FString CreateDeclaration()
+	{
+		return CreateUniformBlockDecl("UserUniforms", Fields, MATERIALUNIFORMS_BINDINGPOINT);
+	}
+
 	void WriteUniforms(UniformStructHolder &Data) const;
 
+	//must only be called once
+	void LoadUniforms(const TMap<FString, UserUniformValue> &Uniforms);
 
 	int UniformStructSize = 0;
 	uint8_t * UniformStruct = nullptr;

@@ -411,8 +411,9 @@ bool FShader::Load(const char * name, const char * vert_prog_lump_, const char *
 	vp_comb << "#line 1\n";
 	fp_comb << "#line 1\n";
 
-	vp_comb << RemoveLayoutLocationDecl(GetStringFromLump(vp_lump), "out").GetChars() << "\n";
-	fp_comb << RemoveLayoutLocationDecl(GetStringFromLump(fp_lump), "in").GetChars() << "\n";
+	// gles will still use manual declarations in the shaders, since it doesn't support user shaders and uses varying/attribute instead
+	vp_comb << GetStringFromLump(vp_lump) << "\n";
+	fp_comb << GetStringFromLump(fp_lump) << "\n";
 	FString placeholder = "\n";
 
 	if (proc_prog_lump.Len())

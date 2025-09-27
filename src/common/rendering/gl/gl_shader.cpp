@@ -53,6 +53,56 @@
 
 EXTERN_CVAR(Bool, r_skipmats)
 
+static void buildShaderInOutPart(const char * inout, bool layout, FString &always, FString &notsimple, FString &noclipdistance, FString &gbuffer, const std::vector<BuiltinFieldDesc> &values)
+{
+	int index = 0;
+	for(const BuiltinFieldDesc &val : values)
+	{
+		FString &out = (val.cond == FieldCondition::ALWAYS) ? always : (val.cond == FieldCondition::NOTSIMPLE) ? notsimple : (val.cond == FieldCondition::NO_CLIPDISTANCE) ? noclipdistance : gbuffer;
+
+		if(layout)
+		{
+			out.AppendFormat("layout(location = %d) %s %s %s %s;\n", index, val.Property.GetChars(), inout, GetTypeStr(val.Type), val.Name.GetChars());
+		}
+		else
+		{
+			out.AppendFormat("%s %s %s %s;\n", val.Property.GetChars(), inout, GetTypeStr(val.Type), val.Name.GetChars());
+		}
+
+		index++;
+	}
+}
+
+FString buildShaderInOut(bool vertex, bool forcelayout)
+{
+	FString always;
+	FString notsimple;
+	FString noclipdistance;
+	FString gbuffer;
+
+	if(vertex)
+	{
+		buildShaderInOutPart("in", true, always, notsimple, noclipdistance, gbuffer, vertexShaderInputs);
+		buildShaderInOutPart("out", forcelayout, always, notsimple, noclipdistance, gbuffer, vertexShaderOutputs);
+	}
+	else
+	{
+		buildShaderInOutPart("in", forcelayout, always, notsimple, noclipdistance, gbuffer, vertexShaderOutputs);
+		buildShaderInOutPart("out", true, always, notsimple, noclipdistance, gbuffer, fragShaderOutputs);
+	}
+
+	return	always + 
+		"#ifndef SIMPLE\n" +
+		notsimple +
+		"#endif\n#ifdef NO_CLIPDISTANCE_SUPPORT\n" +
+		noclipdistance +
+		"#endif\n#ifdef GBUFFER_PASS\n" +
+		gbuffer +
+		"#endif\n";
+
+}
+
+
 namespace OpenGLRenderer
 {
 
@@ -269,7 +319,7 @@ FString ProcessShaderError(const char * shaderError, TArray<FString> &filenames_
 				}
 
 				int64_t old_len = cur - line_start;
-				FString new_err = "File '" + filenames_for_error[lump_num - 1] + "', Line " + line_num_str + ": ";
+				FString new_err = "File '" + (lump_num == 0 ? "engine pk3" : filenames_for_error[lump_num - 1]) + "', Line " + line_num_str + ": ";
 				
 				int64_t diff = new_err.Len() - old_len;
 
@@ -530,11 +580,11 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 	vp_comb << defines << i_data.GetChars();
 	fp_comb << "$placeholder$\n" << defines << i_data.GetChars();
 
-	vp_comb << "#line 1\n";
-	fp_comb << "#line 1\n";
+	vp_comb << buildShaderInOut(true, false)  << "#line 1\n";
+	fp_comb << buildShaderInOut(false, false) << "#line 1\n";
 
-	vp_comb << RemoveLayoutLocationDecl(GetStringFromLump(vp_lump), "out").GetChars() << "\n";
-	fp_comb << RemoveLayoutLocationDecl(GetStringFromLump(fp_lump), "in").GetChars() << "\n";
+	vp_comb << GetStringFromLump(vp_lump) << "\n";
+	fp_comb << GetStringFromLump(fp_lump) << "\n";
 	FString placeholder = "\n";
 	TArray<FString> filenames_for_error;
 

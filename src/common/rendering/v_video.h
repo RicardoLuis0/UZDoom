@@ -162,6 +162,7 @@ public:
 	virtual ~DFrameBuffer();
 	virtual void InitializeState() = 0;	// For stuff that needs 'screen' set.
 	virtual bool IsVulkan() { return false; }
+	virtual bool Std430Allowed(bool isSSBO) { return isSSBO && glslversion >= 4.30; }
 	virtual bool IsPoly() { return false; }
 	virtual int GetShaderCount();
 	virtual bool CompileNextShader() { return true; }

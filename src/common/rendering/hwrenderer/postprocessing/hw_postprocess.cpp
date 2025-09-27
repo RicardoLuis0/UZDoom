@@ -26,6 +26,7 @@
 #include "hwrenderer/postprocessing/hw_postprocessshader.h"
 #include <random>
 #include "texturemanager.h"
+#include "engineerrors.h"
 
 #include "stats.h"
 
@@ -932,7 +933,7 @@ void PPCustomShaders::CreateShaders()
 
 void UserUniforms::LoadUniforms(const TMap<FString, UserUniformValue> &Uniforms)
 {
-	assert(UniformStructSize == 0);
+	if(UniformStructSize != 0) I_Error("Invalid state in UserUniforms::LoadUniforms");
 
 	// Build an uniform block to be used as input
 	TMap<FString, UserUniformValue>::ConstIterator it(Uniforms);
@@ -1147,4 +1148,42 @@ void Postprocess::Pass2(PPRenderState* state, int fixedcm, float flash, int scen
 	lens.Render(state);
 	fxaa.Render(state);
 	customShaders.Run(state, "scene");
+}
+
+
+FString CreateUniformBlockDecl(const char *name, const std::vector<UniformFieldDesc> &fields, int bindingpoint, int set, bool isSSBO, bool use430)
+{
+	const bool vk = screen->IsVulkan();
+	FString decl;
+	const char * version = use430 && screen->Std430Allowed(isSSBO) ? "std430" : "std140"; // std430 is only allowed for UBOs in vulkan, not in OpenGL
+	FString layout;
+	if (bindingpoint == -1)
+	{
+		if(!vk) I_Error("Push Constants are only supported for Vulkan");
+		layout = "push_constant";
+	}
+	else if (screen->glslversion < 4.20)
+	{
+		layout = version;
+	}
+	else
+	{
+		if(vk)
+		{
+			layout.Format("%s, set = %d, binding = %d", version, set, bindingpoint);
+		}
+		else
+		{
+			layout.Format("%s, binding = %d", version, bindingpoint);
+		}
+	}
+	
+	decl.Format("layout(%s) %s %s\n{\n", layout.GetChars(), isSSBO ? "buffer" : "uniform", name);
+	for (size_t i = 0; i < fields.size(); i++)
+	{
+		decl.AppendFormat("\t%s %s;\n", GetTypeStr(fields[i].Type), fields[i].Name);
+	}
+	decl += "};\n";
+
+	return decl;
 }
