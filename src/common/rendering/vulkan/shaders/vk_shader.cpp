@@ -374,12 +374,12 @@ std::vector<BuiltinFieldDesc> vertexShaderInputs
 	{"aPosition",		"", UniformType::Vec4,	FieldCondition::ALWAYS},		//0, VATTR_VERTEX
 	{"aTexCoord",		"", UniformType::Vec2,	FieldCondition::ALWAYS},		//1, VATTR_TEXCOORD
 	{"aColor",			"", UniformType::Vec4,	FieldCondition::ALWAYS},		//2, VATTR_COLOR
-	{"aVertex2",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//3, VATTR_VERTEX2
-	{"aNormal",			"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//4, VATTR_NORMAL
-	{"aNormal2",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//5, VATTR_NORMAL2
-	{"aLightmap",		"", UniformType::Vec3,	FieldCondition::NOTSIMPLE},		//6, VATTR_LIGHTMAP
-	{"aBoneWeight",		"", UniformType::Vec4,	FieldCondition::NOTSIMPLE},		//7, VATTR_BONEWEIGHT
-	{"aBoneSelector",	"", UniformType::UVec4,	FieldCondition::NOTSIMPLE},		//8, VATTR_BONESELECTOR
+	{"aVertex2",		"", UniformType::Vec4,	FieldCondition::ALWAYS},		//3, VATTR_VERTEX2
+	{"aNormal",			"", UniformType::Vec4,	FieldCondition::ALWAYS},		//4, VATTR_NORMAL
+	{"aNormal2",		"", UniformType::Vec4,	FieldCondition::ALWAYS},		//5, VATTR_NORMAL2
+	{"aLightmap",		"", UniformType::Vec3,	FieldCondition::ALWAYS},		//6, VATTR_LIGHTMAP
+	{"aBoneWeight",		"", UniformType::Vec4,	FieldCondition::ALWAYS},		//7, VATTR_BONEWEIGHT
+	{"aBoneSelector",	"", UniformType::UVec4,	FieldCondition::ALWAYS},		//8, VATTR_BONESELECTOR
 	/*
 	{"aDataIndex",		"", UniformType::Int},		//9, VATTR_UNIFORM_INDEXES -- vkdoom only
 	*/
