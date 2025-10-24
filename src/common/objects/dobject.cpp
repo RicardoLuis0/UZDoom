@@ -219,7 +219,7 @@ CCMD (dumpclasses)
 
 void DObject::InPlaceConstructor (void *mem)
 {
-	new ((EInPlace *)mem) DObject;
+	new (mem) DObject;
 }
 
 DObject::DObject ()

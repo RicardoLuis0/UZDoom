@@ -42,6 +42,7 @@
 #include "palentry.h"
 #include "textureid.h"
 #include "autosegs.h"
+#include <new>
 
 class PClass;
 class PType;
@@ -110,8 +111,6 @@ struct ClassReg : FAutoSegEntry<ClassReg>
 	void SetupClass(PClass *cls);
 };
 
-enum EInPlace { EC_InPlace };
-
 #define DECLARE_ABSTRACT_CLASS(cls,parent) \
 public: \
 	PClass *StaticType() const override; \
@@ -166,7 +165,7 @@ public: \
 #define _X_FIELDS_true(cls)			nullptr
 #define _X_FIELDS_false(cls)		nullptr
 #define _X_CONSTRUCTOR_true(cls)
-#define _X_CONSTRUCTOR_false(cls)	void cls::InPlaceConstructor(void *mem) { new((EInPlace *)mem) cls; }
+#define _X_CONSTRUCTOR_false(cls)	void cls::InPlaceConstructor(void *mem) { new(mem) cls; }
 #define _X_ABSTRACT_true(cls)		nullptr
 #define _X_ABSTRACT_false(cls)		cls::InPlaceConstructor
 #define _X_VMEXPORT_true(cls)		nullptr
@@ -257,26 +256,35 @@ public:
 		Class = inClass;
 	}
 
-private:
-	struct nonew
-	{
-	};
-
-	void *operator new(size_t len, nonew&)
-	{
-		return M_Calloc(len, 1);
-	}
 public:
 
-	void operator delete (void *mem, nonew&)
-	{
-		M_Free(mem);
-	}
+	// [Jay] DObject-based classes should not be new'd other than placement
+	void* operator new(size_t) = delete;
+	void* operator new[](size_t) = delete;
+	void* operator new(size_t, std::align_val_t) = delete;
+	void* operator new[](size_t, std::align_val_t) = delete;
 
-	void operator delete (void *mem)
-	{
-		M_Free(mem);
-	}
+	/*
+	// [Jay] DObject-based classes should never use delete - they should be deleted by calling Delete() and leaving the ultimate deletion to the GC
+	// [Jay] THIS BREAKS BECAUSE OF VIRTUAL DESTRUCTORS - TODO remove virtual destructors from DObject
+
+	void operator delete(void *mem) = delete;
+	void operator delete[](void *mem) = delete;
+	void operator delete(void *mem, std::size_t) = delete;
+	void operator delete[](void *mem, std::size_t) = delete;
+	void operator delete(void *mem, std::align_val_t) = delete;
+	void operator delete[](void *mem, std::align_val_t) = delete;
+	void operator delete(void *mem, std::size_t, std::align_val_t) = delete;
+	void operator delete[](void *mem, std::size_t, std::align_val_t) = delete;
+	*/
+	void operator delete(void *mem) {};
+
+	// [Jay] placement new, plus matching delete to stop the compiler from complaining
+	void* operator new(size_t, void* p) { return p; }
+	void* operator new[](size_t, void* p) { return p; }
+	void operator delete(void *mem, void* p) {};
+	void operator delete[](void *mem, void* p) {};
+
 
 	// GC fiddling
 
@@ -333,17 +341,6 @@ public:
 	virtual size_t PropagateMark();
 
 protected:
-	// This form of placement new and delete is for use *only* by PClass's
-	// CreateNew() method. Do not use them for some other purpose.
-	void *operator new(size_t, EInPlace *mem)
-	{
-		return (void *)mem;
-	}
-
-	void operator delete (void *mem, EInPlace *)
-	{
-		M_Free (mem);
-	}
 
 	template<typename T, typename... Args>
 		friend T* Create(Args&&... args);
@@ -371,14 +368,15 @@ extern bool bPredictionGuard;
 template<typename T, typename... Args>
 T* Create(Args&&... args)
 {
-	DObject::nonew nono;
-	T *object = new(nono) T(std::forward<Args>(args)...);
-	if (object != nullptr)
+	void * mem = M_Calloc(sizeof(T), 1);
+	if (mem)
 	{
+		T *object = new(mem) T(std::forward<Args>(args)...);
 		object->SetClass(RUNTIME_CLASS(T));
 		assert(object->GetClass() != nullptr);	// beware of objects that get created before the type system is up.
+		return object;
 	}
-	return object;
+	return nullptr;
 }
 
 
