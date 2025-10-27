@@ -40,9 +40,37 @@
 #include "zstring.h"
 #include "utf8.h"
 #include "stb_sprintf.h"
+#include "vm.h"
 
 extern uint16_t lowerforupper[65536];
 extern uint16_t upperforlower[65536];
+
+
+void ThrowStringBoundsException(int64_t index, size_t len)
+{
+	if constexpr(sizeof(long int) == 8)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %ld out of bounds (string length is %lu)", index, len);
+	}
+	else //if constexpr(sizeof(long long int) == 8)
+	{
+		static_assert(sizeof(long long int) == 8);
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %lld out of bounds (string length is %llu)", index, len);
+	}
+}
+
+void ThrowStringBoundsException(uint64_t index, size_t len)
+{
+	if constexpr(sizeof(long int) == 8)
+	{
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %lu out of bounds (string length is %lu)", index, len);
+	}
+	else //if constexpr(sizeof(long long int) == 8)
+	{
+		static_assert(sizeof(long long int) == 8);
+		ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "string index %llu out of bounds (string length is %llu)", index, len);
+	}
+}
 
 FNullStringData FString::NullString =
 {

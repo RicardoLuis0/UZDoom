@@ -118,6 +118,9 @@ enum ELumpNum
 {
 };
 
+void ThrowStringBoundsException(int64_t index, size_t len);
+void ThrowStringBoundsException(uint64_t index, size_t len);
+
 class FString
 {
 public:
@@ -168,18 +171,39 @@ public:
 
 	TArrayView<uint8_t> GetTArrayView();
 
-	const char &operator[] (int index) const { return Chars[index]; }
+	const char &operator[] (int index) const
+	{
+		if(index < 0 || index >= Len()) ThrowStringBoundsException((int64_t)index, Len());
+		return Chars[index];
+	}
 #if defined(_WIN32) && !defined(_WIN64) && defined(_MSC_VER)
 	// Compiling 32-bit Windows source with MSVC: size_t is typedefed to an
 	// unsigned int with the 64-bit portability warning attribute, so the
 	// prototype cannot substitute unsigned int for size_t, or you get
 	// spurious warnings.
-	const char &operator[] (size_t index) const { return Chars[index]; }
+	const char &operator[] (size_t index) const
+	{
+		if(index >= Len()) ThrowStringBoundsException((uint64_t)index, Len());
+		return Chars[index];
+	}
 #else
-	const char &operator[] (unsigned int index) const { return Chars[index]; }
+	const char &operator[] (unsigned int index) const
+	{
+		if(index >= Len()) ThrowStringBoundsException((uint64_t)index, Len());
+		return Chars[index];
+	}
 #endif
-	const char &operator[] (unsigned long index) const { return Chars[index]; }
-	const char &operator[] (unsigned long long index) const { return Chars[index]; }
+	const char &operator[] (unsigned long index) const
+	{
+		if(index >= Len()) ThrowStringBoundsException((uint64_t)index, Len());
+		return Chars[index];
+	}
+
+	const char &operator[] (unsigned long long index) const
+	{
+		if(index >= Len()) ThrowStringBoundsException((uint64_t)index, Len());
+		return Chars[index];
+	}
 
 	FString &operator = (const FString &other);
 	FString &operator = (FString &&other) noexcept;
