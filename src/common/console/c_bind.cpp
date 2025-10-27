@@ -888,7 +888,7 @@ bool C_DoKey (event_t *ev, FKeyBindings *binds, FKeyBindings *doublebinds)
 		dclick = false;
 	}
 
-	if (ev->type == EV_KeyUp && binding[0] != '+')
+	if (ev->type == EV_KeyUp && (binding.Len() == 0 || binding[0] != '+'))
 	{
 		return false;
 	}

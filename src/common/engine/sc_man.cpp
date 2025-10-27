@@ -244,8 +244,8 @@ void FScanner::PrepareScript ()
 		}
 	}
 
-	ScriptPtr = &ScriptBuffer[0];
-	ScriptEndPtr = &ScriptBuffer[ScriptBuffer.Len()];
+	ScriptPtr = ScriptBuffer.GetChars();
+	ScriptEndPtr = ScriptBuffer.GetChars() + ScriptBuffer.Len();
 	Line = 1;
 	End = false;
 	ScriptOpen = true;

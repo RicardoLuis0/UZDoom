@@ -419,7 +419,7 @@ static FConsoleCommand *ScanChainForName (FConsoleCommand *start, const char *na
 		comp = start->m_Name.CompareNoCase(name, namelen);
 		if (comp > 0)
 			return NULL;
-		else if (comp == 0 && start->m_Name[namelen] == 0)
+		else if (comp == 0 && (start->m_Name.Len() == namelen || start->m_Name[namelen] == 0))
 			return start;
 
 		*prev = start;

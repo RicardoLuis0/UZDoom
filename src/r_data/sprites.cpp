@@ -417,10 +417,11 @@ void R_InitSpriteDefs ()
 			auto tex = TexMan.GetGameTexture(hash);
 			if (TEX_DWNAME(tex) == intname)
 			{
-				bool res = R_InstallSpriteLump (FTextureID(hash), tex->GetName()[4] - 'A', tex->GetName()[5], false, sprtemp, maxframe);
+				if(tex->GetName().Len() < 5) I_Error("Sprite name incomplete");
+				bool res = R_InstallSpriteLump (FTextureID(hash), tex->GetName()[4] - 'A', tex->GetName().Len() >= 6 ? tex->GetName()[5] : 0, false, sprtemp, maxframe);
 
-				if (tex->GetName()[6] && res)
-					R_InstallSpriteLump (FTextureID(hash), tex->GetName()[6] - 'A', tex->GetName()[7], true, sprtemp, maxframe);
+				if (tex->GetName().Len() >= 7 && tex->GetName()[6] && res)
+					R_InstallSpriteLump (FTextureID(hash), tex->GetName()[6] - 'A', tex->GetName().Len() >= 8 ? tex->GetName()[7] : 0, true, sprtemp, maxframe);
 			}
 			hash = hashes[hash].Next;
 		}

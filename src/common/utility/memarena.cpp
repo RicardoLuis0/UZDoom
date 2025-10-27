@@ -404,7 +404,7 @@ FSharedStringArena::Node *FSharedStringArena::FindString(const char *str, size_t
 
 	for (Node *node = Buckets[hash % countof(Buckets)]; node != NULL; node = node->Next)
 	{
-		if (node->Hash == hash && node->String.Len() == strlen && memcmp(&node->String[0], str, strlen) == 0)
+		if (node->Hash == hash && node->String.Len() == strlen && memcmp(node->String.GetChars(), str, strlen) == 0)
 		{
 			return node;
 		}

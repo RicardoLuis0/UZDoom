@@ -223,7 +223,7 @@ bool FStringTable::ParseLanguageCSV(int filenum, const char* buffer, size_t size
 					else if (lang.Len() < 4)
 					{
 						lang.ToLower();
-						langrows.Push(std::make_pair(column, MAKE_ID(lang[0], lang[1], lang[2], 0)));
+						langrows.Push(std::make_pair(column, MAKE_ID(lang.Len() > 0 ? lang[0] : 0, lang.Len() > 1 ? lang[1] : 0, lang.Len() > 2 ? lang[2] : 0, 0)));
 					}
 				}
 			}
