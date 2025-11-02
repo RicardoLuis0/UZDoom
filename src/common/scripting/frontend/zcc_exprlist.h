@@ -75,4 +75,6 @@ xx(Trinary,			'?')
 
 xx(Cast,			TK_Coerce)
 
+xx(ExplicitCast,	'(')
+
 #undef xx
