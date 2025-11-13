@@ -263,7 +263,8 @@ static size_t SweepObjects(size_t count)
 			{	// must erase 'curr'
 				*SweepPos = curr->ObjNext;
 				curr->ObjectFlags |= OF_Cleanup;
-				delete curr;
+				curr->~DObject();
+				M_Free(curr);
 				swept += GCDELETECOST;
 			}
 		}
@@ -629,7 +630,8 @@ void DelSoftRootHead()
 	{
 		// Don't let the destructor print a warning message
 		SoftRoots->ObjectFlags |= OF_YesReallyDelete;
-		delete SoftRoots;
+		SoftRoots->~DObject();
+		M_Free(SoftRoots);
 	}
 	SoftRoots = nullptr;
 }
