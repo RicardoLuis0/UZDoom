@@ -472,6 +472,8 @@ public:
 	typedef TMap<int, DLevelScript *> ScriptMap;
 	ScriptMap RunningScripts;	// Array of all synchronous scripts
 
+	virtual size_t PropagateMark() override;
+
 	void DumpScriptStatus();
 	void StopScriptsFor(AActor *actor);
 

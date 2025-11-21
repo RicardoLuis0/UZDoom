@@ -78,6 +78,7 @@
 #include "types.h"
 #include "v_video.h"
 #include "version.h"
+#include "dobjgc.h"
 
 	// P-codes for ACS scripts
 	enum
@@ -11016,4 +11017,16 @@ CCMD(acsprofile)
 ADD_STAT(ACS)
 {
 	return FStringf("ACS time: %f ms", ACSTime.TimeMS());
+}
+
+
+size_t DACSThinker::PropagateMark()
+{
+	TMapIterator<int, DLevelScript*> it(RunningScripts);
+	ScriptMap::Pair * pair;
+	while(it.NextPair(pair))
+	{
+		GC::Mark((DObject*&)pair->Value);
+	}
+	return Super::PropagateMark();
 }
