@@ -2237,7 +2237,7 @@ void HWWall::Process(HWWallDispatcher *di, seg_t *seg, sector_t * frontsector, s
 	lightlist = NULL;
 
 	int rel = 0;
-	int orglightlevel = hw_ClampLight(frontsector->lightlevel, false);
+	int orglightlevel = hw_ClampLight<false>(frontsector->lightlevel);
 	bool foggy = (!Colormap.FadeColor.isBlack() || di->Level->flags&LEVEL_HASFADETABLE);	// fog disables fake contrast
 
 	alpha = 1.0f;

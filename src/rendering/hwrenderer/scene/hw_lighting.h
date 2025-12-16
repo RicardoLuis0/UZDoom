@@ -9,9 +9,18 @@ struct Colormap;
 
 EXTERN_CVAR(Int, r_extralight)
 
-inline int hw_ClampLight(int lightlevel, bool addExtra = true)
+template<bool addExtra = true>
+inline int hw_ClampLight(int lightlevel) // TODO/tidy: rename + move out of hwrenderer namespace
 {
-	return clamp(lightlevel + r_extralight * addExtra, 0, 255);
+	if constexpr(addExtra)
+	{
+		//max is needed for negative r_extralight values
+		return max(int((clamp(lightlevel, 0, 255) / 255.0) * (255.0 - r_extralight)) + r_extralight, 0);
+	}
+	else
+	{
+		return clamp(lightlevel, 0, 255);
+	}
 }
 
 EXTERN_CVAR(Int, gl_weaponlight);
