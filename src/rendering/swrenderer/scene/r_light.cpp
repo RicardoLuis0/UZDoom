@@ -148,7 +148,7 @@ namespace swrenderer
 
 	fixed_t LightVisibility::LightLevelToShadeImpl(RenderViewport *viewport, int lightlevel, bool foggy)
 	{
-		lightlevel = hw_ClampLight(lightlevel);
+		lightlevel = RescaleLightLevel<false>(lightlevel);
 		bool nolightfade = !foggy && ((viewport->Level()->flags3 & LEVEL3_NOLIGHTFADE));
 		if (nolightfade)
 		{
