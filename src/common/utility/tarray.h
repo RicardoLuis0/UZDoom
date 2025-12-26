@@ -369,6 +369,18 @@ public:
         return i;
     }
 
+	//TODO add requires clause after C++20 update
+	unsigned int FindNoCase(const T& item) const
+	{
+		unsigned int i;
+		for(i = 0;i < Count;++i)
+		{
+			if(Array[i].CompareNoCase(item) == 0)
+				break;
+		}
+		return i;
+	}
+
 	// !!! THIS REQUIRES AN ELEMENT TYPE THAT'S COMPARABLE WITH THE LT OPERATOR !!!
 	bool IsSorted()
 	{
