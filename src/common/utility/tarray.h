@@ -369,8 +369,7 @@ public:
         return i;
     }
 
-	//TODO add requires clause after C++20 update
-	unsigned int FindNoCase(const T& item) const
+	unsigned int FindNoCase(const T& item) const requires requires(const T& t) {t.CompareNoCase(t) == 0;}
 	{
 		unsigned int i;
 		for(i = 0;i < Count;++i)
