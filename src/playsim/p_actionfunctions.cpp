@@ -6030,7 +6030,7 @@ DEFINE_ACTION_FUNCTION(AActor, GetBoneEulerAngles)
 
 	if(mdl)
 	{
-		ACTION_RETURN_VEC3(self->GetBoneEulerAngles(0, bone_index, with_override));
+		ACTION_RETURN_VEC3(self->GetBoneEulerAngles(mdl, 0, bone_index, with_override));
 	}
 
 
@@ -6049,7 +6049,7 @@ DEFINE_ACTION_FUNCTION(AActor, GetNamedBoneEulerAngles)
 
 	if(mdl)
 	{
-		ACTION_RETURN_VEC3(self->GetBoneEulerAngles(0, bone_index, with_override));
+		ACTION_RETURN_VEC3(self->GetBoneEulerAngles(mdl, 0, bone_index, with_override));
 	}
 
 	ACTION_RETURN_VEC3(DVector3(0,0,0));
