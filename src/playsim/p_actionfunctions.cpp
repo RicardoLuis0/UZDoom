@@ -6080,7 +6080,7 @@ DEFINE_ACTION_FUNCTION(AActor, TransformByBone)
 
 	if(mdl)
 	{
-		self->GetBonePosition(0, bone_index, with_override, position, fwd, up);
+		self->GetBonePosition(mdl, 0, bone_index, with_override, position, fwd, up);
 	}
 
 	if(numret > 2)
@@ -6126,7 +6126,7 @@ DEFINE_ACTION_FUNCTION(AActor, TransformByNamedBone)
 
 	if(mdl)
 	{
-		self->GetBonePosition(0, bone_index, with_override, position, fwd, up);
+		self->GetBonePosition(mdl, 0, bone_index, with_override, position, fwd, up);
 	}
 
 	if(numret > 2)
