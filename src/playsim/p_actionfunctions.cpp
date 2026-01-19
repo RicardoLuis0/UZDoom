@@ -6335,7 +6335,7 @@ public:
 DEFINE_FIELD(DAnimationLayer, curAnim);
 DEFINE_FIELD(DAnimationLayer, prevAnim);
 
-IMPLEMENT_CLASS(DAnimationLayer, false, false);
+IMPLEMENT_CLASS(DAnimationLayer, false, true);
 IMPLEMENT_POINTERS_START(DAnimationLayer)
 	IMPLEMENT_POINTER(curAnim)
 	IMPLEMENT_POINTER(prevAnim)
