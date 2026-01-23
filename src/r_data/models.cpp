@@ -579,6 +579,15 @@ const TArray<VSMatrix> * ProcessModelFrame(FModel * animation, bool nextFrame, i
 				out,
 				tic);
 		}
+		else
+		{
+			boneData = animation->CalculateBonesOnlyOffsets(
+				modelData->modelBoneOverrides.SSize() > i
+				? &modelData->modelBoneOverrides[i]
+				: nullptr,
+				out,
+				tic);
+		}
 	}
 	else
 	{
@@ -622,7 +631,7 @@ static inline void RenderModelFrame(FModelRenderer *renderer, int i, const FSpri
 		{
 			if(!boneData && is_decoupled)
 			{
-				boneData = mdl->CalculateBonesOnlyOffsets((modelData && modelData->modelBoneOverrides.SSize() > i)? &modelData->modelBoneOverrides[i] : nullptr, tic);
+				boneData = mdl->CalculateBonesOnlyOffsets((modelData && modelData->modelBoneOverrides.SSize() > i)? &modelData->modelBoneOverrides[i] : nullptr, nullptr, tic);
 			}
 
 			boneStartingPosition = boneData ? screen->mBones->UploadBones(*boneData) : -1;
