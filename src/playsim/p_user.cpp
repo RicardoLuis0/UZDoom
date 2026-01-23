@@ -1450,6 +1450,7 @@ void P_PredictPlayer (player_t *player)
 		player->mo == NULL ||
 		player != player->mo->Level->GetConsolePlayer() ||
 		(player->mo->ObjectFlags & OF_JustSpawned) ||
+		(!netgame && cl_debugprediction == 0) ||
 		(player->cheats & CF_PREDICTING))
 	{
 		return;
