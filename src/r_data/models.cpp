@@ -573,7 +573,7 @@ const TArray<VSMatrix> * ProcessModelFrame(FModel * animation, bool nextFrame, i
 				frameinfo.decoupled_frame,
 				frameinfo.inter,
 				animationData,
-				modelData->modelBoneOverrides.SSize() > i
+				(modelData && modelData->modelBoneOverrides.SSize() > i)
 				? &modelData->modelBoneOverrides[i]
 				: nullptr,
 				out,
@@ -582,7 +582,7 @@ const TArray<VSMatrix> * ProcessModelFrame(FModel * animation, bool nextFrame, i
 		else
 		{
 			boneData = animation->CalculateBonesOnlyOffsets(
-				modelData->modelBoneOverrides.SSize() > i
+				(modelData && modelData->modelBoneOverrides.SSize() > i)
 				? &modelData->modelBoneOverrides[i]
 				: nullptr,
 				out,
