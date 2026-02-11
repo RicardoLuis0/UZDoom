@@ -678,10 +678,10 @@ bool Joy_ManageThumbstick(
 		if (!isfinite(scaled)) scaled = 1.0;
 
 		const CubicBezier curve = {{
-			(float)std::lerp(curve_y.x1, curve_x.x1, x_bias),
-			(float)std::lerp(curve_y.y1, curve_x.y1, x_bias),
-			(float)std::lerp(curve_y.x2, curve_x.x2, x_bias),
-			(float)std::lerp(curve_y.y2, curve_x.y2, x_bias),
+			(float)std::lerp((double) curve_y.x1, (double) curve_x.x1, x_bias),
+			(float)std::lerp((double) curve_y.y1, (double) curve_x.y1, x_bias),
+			(float)std::lerp((double) curve_y.x2, (double) curve_x.x2, x_bias),
+			(float)std::lerp((double) curve_y.y2, (double) curve_x.y2, x_bias),
 		}};
 
 		scaled = Joy_ApplyResponseCurveBezier(curve, scaled);
