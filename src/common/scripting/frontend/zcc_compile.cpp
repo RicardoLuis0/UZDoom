@@ -1555,6 +1555,11 @@ bool ZCCCompiler::CompileFields(PContainerType *type, TArray<ZCC_VarDeclarator *
 			varflags |= VARF_Native | VARF_Transient | VARF_NoRollback;
 		}
 
+		if (field->Flags & ZCC_SerializedNative)
+		{
+			varflags |= VARF_Native;
+		}
+
 		static int excludescope[] = { ZCC_UIFlag, ZCC_Play, ZCC_ClearScope };
 		int excludeflags = 0;
 		int fc = 0;

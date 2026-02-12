@@ -323,5 +323,6 @@ xx(CheckDeprecatedFlags)
 
 xx(ScreenJobRunner)
 xx(Action)
+xx(SerializedNative)
 
 // clang-format on

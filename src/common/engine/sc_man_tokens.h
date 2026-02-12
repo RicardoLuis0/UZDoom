@@ -183,6 +183,7 @@ xx(TK_Slow,					"'slow'")
 xx(TK_Bright,				"'bright'")
 xx(TK_Let,					"'let'")
 xx(TK_StaticConst,			"'static const'")
+xx(TK_SerializedNative,		"'serialized_native'")
 #undef xx
 
 // clang-format on

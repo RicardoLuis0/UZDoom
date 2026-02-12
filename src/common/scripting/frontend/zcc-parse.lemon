@@ -1364,6 +1364,7 @@ decl_flags(X) ::= decl_flags(F) VERSION(B) LPAREN STRCONST(A) RPAREN.
 }
 
 decl_flag(X) ::= NATIVE(T).		{ X.Int = ZCC_Native; X.SourceLoc =  T.SourceLoc; }
+decl_flag(X) ::= SERIALIZEDNATIVE(T).	{ X.Int = ZCC_SerializedNative; X.SourceLoc =  T.SourceLoc; }
 decl_flag(X) ::= STATIC(T).		{ X.Int = ZCC_Static; X.SourceLoc =  T.SourceLoc; }
 decl_flag(X) ::= PRIVATE(T).	{ X.Int = ZCC_Private; X.SourceLoc =  T.SourceLoc; }
 decl_flag(X) ::= PROTECTED(T).	{ X.Int = ZCC_Protected; X.SourceLoc =  T.SourceLoc; }

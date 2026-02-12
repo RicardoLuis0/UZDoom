@@ -26,30 +26,30 @@
 struct FCheckPosition
 {
 	// in
-	native Actor		thing;
-	native Vector3		pos;
+	serialized_native Actor		thing;
+	serialized_native Vector3		pos;
 
 	// out
-	native Sector		cursector;
-	native double		floorz;
-	native double		ceilingz;
-	native double		dropoffz;
-	native TextureID	floorpic;
-	native int			floorterrain;
-	native Sector		floorsector;
-	native TextureID	ceilingpic;
-	native Sector		ceilingsector;
-	native bool			touchmidtex;
-	native bool			abovemidtex;
-	native bool			floatok;
-	native bool			FromPMove;
-	native line			ceilingline;
-	native Actor		stepthing;
-	native bool			DoRipping;
-	native bool			portalstep;
-	native int			portalgroup;
+	serialized_native Sector		cursector;
+	serialized_native double		floorz;
+	serialized_native double		ceilingz;
+	serialized_native double		dropoffz;
+	serialized_native TextureID	floorpic;
+	serialized_native int			floorterrain;
+	serialized_native Sector		floorsector;
+	serialized_native TextureID	ceilingpic;
+	serialized_native Sector		ceilingsector;
+	serialized_native bool			touchmidtex;
+	serialized_native bool			abovemidtex;
+	serialized_native bool			floatok;
+	serialized_native bool			FromPMove;
+	serialized_native line			ceilingline;
+	serialized_native Actor		stepthing;
+	serialized_native bool			DoRipping;
+	serialized_native bool			portalstep;
+	serialized_native int			portalgroup;
 
-	native int			PushTime;
+	serialized_native int			PushTime;
 
 	// These are internal helpers to properly initialize an object of this type.
 	private native void _Constructor();
@@ -71,19 +71,19 @@ struct FLineTraceData
 		TRACE_HasHitSky
 	};
 
-	native Actor HitActor;
-	native Line HitLine;
-	native Sector HitSector;
-	native F3DFloor Hit3DFloor;
-	native TextureID HitTexture;
-	native Vector3 HitLocation;
-	native Vector3 HitDir;
-	native double Distance;
-	native int NumPortals;
-	native int LineSide;
-	native int LinePart;
-	native int SectorPlane;
-	native int HitType;
+	serialized_native Actor HitActor;
+	serialized_native Line HitLine;
+	serialized_native Sector HitSector;
+	serialized_native F3DFloor Hit3DFloor;
+	serialized_native TextureID HitTexture;
+	serialized_native Vector3 HitLocation;
+	serialized_native Vector3 HitDir;
+	serialized_native double Distance;
+	serialized_native int NumPortals;
+	serialized_native int LineSide;
+	serialized_native int LinePart;
+	serialized_native int SectorPlane;
+	serialized_native int HitType;
 }
 
 struct LinkContext

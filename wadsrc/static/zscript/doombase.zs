@@ -476,26 +476,26 @@ struct LevelInfo native
 
 struct FSpawnParticleParams
 {
-	native Color color1;
-	native TextureID texture;
-	native int style;
-	native int flags;
-	native int lifetime;
+	serialized_native Color color1;
+	serialized_native TextureID texture;
+	serialized_native int style;
+	serialized_native int flags;
+	serialized_native int lifetime;
 
-	native double size;
-	native double sizestep;
+	serialized_native double size;
+	serialized_native double sizestep;
 
-	native Vector3 pos;
-	native Vector3 vel;
-	native Vector3 accel;
+	serialized_native Vector3 pos;
+	serialized_native Vector3 vel;
+	serialized_native Vector3 accel;
 	
-	native double startalpha;
-	native double fadestep;
-	native double fadeoutstep; // unlike fadestep, this is always expected to be a positive value.
+	serialized_native double startalpha;
+	serialized_native double fadestep;
+	serialized_native double fadeoutstep; // unlike fadestep, this is always expected to be a positive value.
 
-	native double startroll;
-	native double rollvel;
-	native double rollacc;
+	serialized_native double startroll;
+	serialized_native double rollvel;
+	serialized_native double rollacc;
 };
 
 struct LevelLocals native
@@ -1051,22 +1051,22 @@ struct Shader native
 
 struct FRailParams
 {
-	native int damage;
-	native double offset_xy;
-	native double offset_z;
-	native int color1, color2;
-	native double maxdiff;
-	native int flags;
-	native Class<Actor> puff;
-	native double angleoffset;
-	native double pitchoffset;
-	native double distance;
-	native int duration;
-	native double sparsity;
-	native double drift;
-	native Class<Actor> spawnclass;
-	native int SpiralOffset;
-	native int limit;
+	serialized_native int damage;
+	serialized_native double offset_xy;
+	serialized_native double offset_z;
+	serialized_native int color1, color2;
+	serialized_native double maxdiff;
+	serialized_native int flags;
+	serialized_native Class<Actor> puff;
+	serialized_native double angleoffset;
+	serialized_native double pitchoffset;
+	serialized_native double distance;
+	serialized_native int duration;
+	serialized_native double sparsity;
+	serialized_native double drift;
+	serialized_native Class<Actor> spawnclass;
+	serialized_native int SpiralOffset;
+	serialized_native int limit;
 };	// [RH] Shoot a railgun
 
 // This is just here to prevent mods that used setting this directly from breaking.

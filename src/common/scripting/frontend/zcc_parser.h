@@ -92,6 +92,7 @@ enum
 	ZCC_UnsafeClearScope	= 1 << 25,
 	ZCC_VMInternalStruct	= 1 << 26,
 	ZCC_NoRollback			= 1 << 27,
+	ZCC_SerializedNative	= 1 << 28,
 };
 
 // Function parameter modifiers
