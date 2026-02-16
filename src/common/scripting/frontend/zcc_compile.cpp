@@ -30,6 +30,9 @@
 #include "printf.h"
 #include "symbols.h"
 
+#include <map>
+#include <vector>
+
 FSharedStringArena VMStringConstants;
 
 
@@ -484,6 +487,9 @@ ZCCCompiler::ZCCCompiler(ZCC_AST &ast, DObject *_outer, PSymbolTable &_symbols, 
 		ZCC_TreeNode *node = ast.TopNode;
 		PSymbolTreeNode *tnode = nullptr;
 
+		std::map<int, std::vector<ZCC_Class *>> class_extensions;
+		std::map<int, std::vector<ZCC_Struct *>> struct_extensions;
+
 		// [pbeta] Anything that must be processed before classes, structs, etc. should go here.
 		do
 		{
@@ -498,6 +504,20 @@ ZCCCompiler::ZCCCompiler(ZCC_AST &ast, DObject *_outer, PSymbolTable &_symbols, 
 				}
 				break;
 
+			case AST_Class:
+				if (auto cls = static_cast<ZCC_Class *>(node); cls->Flags == ZCC_Extension)
+				{
+					class_extensions[(int)cls->NodeName].push_back(cls);
+					break;
+				}
+				break;
+			case AST_Struct:
+				if (auto st = static_cast<ZCC_Struct*>(node); st->Flags == ZCC_Extension)
+				{
+					struct_extensions[(int)st->NodeName].push_back(st);
+					break;
+				}
+				break;
 			default:
 				break; // Shut GCC up.
 			}
@@ -517,17 +537,15 @@ ZCCCompiler::ZCCCompiler(ZCC_AST &ast, DObject *_outer, PSymbolTable &_symbols, 
 				break;
 
 			case AST_Class:
-				// a class extension should not check the tree node symbols.
+				// extensions have already been queued
 				if (static_cast<ZCC_Class *>(node)->Flags == ZCC_Extension)
 				{
-					ProcessClass(static_cast<ZCC_Class *>(node), tnode);
 					break;
 				}
 				goto common;
 			case AST_Struct:
-				if (static_cast<ZCC_Class*>(node)->Flags == ZCC_Extension)
+				if (static_cast<ZCC_Struct*>(node)->Flags == ZCC_Extension)
 				{
-					ProcessStruct(static_cast<ZCC_Struct*>(node), tnode, nullptr);
 					break;
 				}
 				goto common;
@@ -547,10 +565,26 @@ ZCCCompiler::ZCCCompiler(ZCC_AST &ast, DObject *_outer, PSymbolTable &_symbols, 
 
 					case AST_Class:
 						ProcessClass(static_cast<ZCC_Class *>(node), tnode);
+
+						if(auto it = class_extensions.find((int)static_cast<ZCC_NamedNode *>(node)->NodeName); it != class_extensions.end())
+						{
+							for(ZCC_Class * ext : it->second)
+							{
+								ProcessClass(ext, tnode);
+							}
+						}
 						break;
 
 					case AST_Struct:
 						ProcessStruct(static_cast<ZCC_Struct *>(node), tnode, nullptr);
+
+						if(auto it = struct_extensions.find((int)static_cast<ZCC_NamedNode *>(node)->NodeName); it != struct_extensions.end())
+						{
+							for(ZCC_Struct * ext : it->second)
+							{
+								ProcessStruct(ext, tnode, nullptr);
+							}
+						}
 						break;
 
 					case AST_ConstantDef:
