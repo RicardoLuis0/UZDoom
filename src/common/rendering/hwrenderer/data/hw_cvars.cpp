@@ -42,6 +42,11 @@ CVAR(Bool,gl_mirrors,true,0)	// This is for debugging only!
 CVAR(Bool,gl_mirror_envmap, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 CVAR(Bool, gl_seamless, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
+CUSTOM_CVAR(Int, r_portal_recursions, 4, CVAR_ARCHIVE)
+{
+	self = std::clamp<int>(self, 0, 16);
+}
+
 bool gl_plane_reflection_i;	// This is needed in a header that cannot include the CVAR stuff...
 CUSTOM_CVAR(Bool, gl_plane_reflection, true, CVAR_GLOBALCONFIG|CVAR_ARCHIVE)
 {
