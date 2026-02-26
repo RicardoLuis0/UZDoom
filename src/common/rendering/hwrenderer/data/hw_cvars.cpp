@@ -44,7 +44,8 @@ CVAR(Bool, gl_seamless, true, CVAR_ARCHIVE|CVAR_GLOBALCONFIG)
 
 CUSTOM_CVAR(Int, r_portal_recursions, 4, CVAR_ARCHIVE)
 {
-	self = std::clamp<int>(self, 0, 16);
+	if (self > 16) self = 16;
+	if (self < 0) self = 0;
 }
 
 bool gl_plane_reflection_i;	// This is needed in a header that cannot include the CVAR stuff...
