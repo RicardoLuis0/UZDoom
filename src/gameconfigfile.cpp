@@ -168,6 +168,7 @@ FGameConfigFile::FGameConfigFile ()
 	FString pathname;
 
 	OkayToWrite = false;	// Do not allow saving of the config before DoKeySetup()
+	QueueWrite = false;
 	bModSetup = false;
 	bResetBindFlags = 0;
 	pathname = GetConfigPath (true);
@@ -859,6 +860,12 @@ void FGameConfigFile::DoKeySetup(const char *gamename)
 	}
 
 	OkayToWrite = true;
+
+	if(QueueWrite)
+	{
+		M_SaveDefaults(NULL);
+		QueueWrite = false;
+	}
 }
 
 // Like DoGameSetup(), but for mod-specific cvars.

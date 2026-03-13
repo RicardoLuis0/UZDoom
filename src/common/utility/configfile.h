@@ -83,6 +83,7 @@ protected:
 
 	bool OkayToWrite;
 	bool FileExisted;
+	mutable bool QueueWrite;
 
 private:
 	struct FConfigEntry
