@@ -38,6 +38,14 @@ jobs:
           sparse-checkout: |
             README.md
 
+      - uses: actions/checkout@v6
+        if: ${{ inputs.is_experimental }}
+        with:
+          ref: trunk
+          fetch-depth: 0
+          sparse-checkout: |
+            README.md
+
       - name: Download Artifacts
         uses: actions/download-artifact@v8
         with:
@@ -80,10 +88,10 @@ jobs:
         name: Find Base Commit
         if: ${{ inputs.is_experimental }}
         run: |
-          echo "base=$(git merge-base trunk experimental)" >> "$GITHUB_OUTPUT"
+          echo "base=$(git merge-base trunk ${{ inputs.branch }})" >> "$GITHUB_OUTPUT"
           {
             echo 'message<<EOF'
-            git log --format=%B -n 1 $(git merge-base trunk experimental)
+            git log --format=%B -n 1 $(git merge-base trunk ${{ inputs.branch }})
             echo 'EOF'
           } >> $GITHUB_OUTPUT
 
