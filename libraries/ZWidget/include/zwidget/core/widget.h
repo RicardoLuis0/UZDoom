@@ -19,7 +19,8 @@ enum class WidgetType
 {
 	Child,
 	Window,
-	Popup
+	Popup,
+	Utility
 };
 
 enum class WidgetEvent

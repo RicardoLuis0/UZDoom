@@ -150,7 +150,7 @@ public:
 class DisplayWindow
 {
 public:
-	static std::unique_ptr<DisplayWindow> Create(DisplayWindowHost* windowHost, bool popupWindow, DisplayWindow* owner, RenderAPI renderAPI, bool resizable);
+	static std::unique_ptr<DisplayWindow> Create(DisplayWindowHost* windowHost, bool popupWindow, DisplayWindow* owner, RenderAPI renderAPI, bool resizable, bool utility);
 
 	static void ProcessEvents();
 	static void RunLoop();
@@ -226,7 +226,7 @@ public:
 	virtual bool IsWin32() { return false; }
 	virtual bool IsSDL2() { return false; }
 
-	virtual std::unique_ptr<DisplayWindow> Create(DisplayWindowHost* windowHost, bool popupWindow, DisplayWindow* owner, RenderAPI renderAPI, bool resizable) = 0;
+	virtual std::unique_ptr<DisplayWindow> Create(DisplayWindowHost* windowHost, bool popupWindow, DisplayWindow* owner, RenderAPI renderAPI, bool resizable, bool utility) = 0;
 	virtual void ProcessEvents() = 0;
 	virtual void RunLoop() = 0;
 	virtual void ExitLoop() = 0;

@@ -77,7 +77,7 @@ static double DelayLoadGetDpiScale(HWND hwnd)
 	}
 }
 
-Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, Win32DisplayWindow* owner, RenderAPI renderAPI, bool resizable) : WindowHost(windowHost), PopupWindow(popupWindow)
+Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, bool popupWindow, Win32DisplayWindow* owner, RenderAPI renderAPI, bool resizable, bool utility) : WindowHost(windowHost), PopupWindow(popupWindow)
 {
 	Windows.push_front(this);
 	WindowsIterator = Windows.begin();
