@@ -18,6 +18,8 @@ endif()
 
 project(UZDoom)
 
+set(ABSL_BUILD_TESTING OFF) # don't build/run abseil tests
+
 # make all targets use LTO - want to do this early in the cmake to ensure it applies to any targets
 option( FORCE_NO_LTO "Turn off LTO even if it would be possible to use it." NO )
 
