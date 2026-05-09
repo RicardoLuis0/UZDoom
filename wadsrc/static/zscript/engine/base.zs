@@ -779,6 +779,12 @@ struct SystemTime
 	native static clearscope String Format(String timeForm, int timeVal); // This converts an epoch time to a local time, then uses the strftime syntax to format it
 }
 
+enum EFieldType
+{
+	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
+	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
+}
+
 class Object native
 {
 	const TICRATE = 35;
@@ -813,6 +819,40 @@ class Object native
 	native clearscope bool IsClientSide() const;
 
 	native virtualscope void Destroy();
+
+	// play info getters, can only read play and data vars
+
+	native version("5.0.0") bool HasField(Name field) const;
+	native version("5.0.0") EFieldType GetFieldType(Name field) const; // returns EFieldType
+	native version("5.0.0") int ArrayFieldDimensions(Name field) const; // not array = 0, 1d array = 1, 2d array = 2, 3d array = 3, etc
+
+	version("5.0.0") bool IsFieldArray(Name field) const
+	{
+		return ArrayFieldDimensions(field) == 0;
+	}
+
+	native version("5.0.0") int GetArrayFieldDimensionSize(Name field, int dimension_index) const; // size of nth array dimension
+	
+	native version("5.0.0") class<Object> GetObjectFieldClass(Name field) const; // returns null for non-object fields
+	native version("5.0.0") class<Object> GetClassFieldClass(Name field) const; // returns null for non-class<T> fields
+
+	// TODO ui info getters (5.1?)
+
+	// play data getters, can only get play and data vars
+
+	// TODO implement type-restricted varargs in compiler (5.1?)
+
+	native version("5.0.0") vararg bool, int GetIntField(Name field, ...) const; // GetIntField(field, array indices...), returns true and data if success
+
+	// TODO ui data getters (5.1?)
+
+	// play data setters, can only set play and data vars
+	
+	native version("5.0.0") vararg bool SetIntField(Name field, int data, ...); // SetIntField(field, data, array indices...), returns true if success
+
+	// ui data setters
+
+	// TODO
 
 	// This does not call into the native method of the same name to avoid problems with objects that get garbage collected late on shutdown.
 	virtual virtualscope void OnDestroy() {}

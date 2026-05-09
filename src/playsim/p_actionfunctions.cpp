@@ -57,6 +57,7 @@
 #include "shadowinlines.h"
 #include "i_time.h"
 #include "vm.h"
+#include "types.h"
 
 static FRandom pr_camissile ("CustomActorfire");
 static FRandom pr_cabullet ("CustomBullet");
@@ -2987,6 +2988,287 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_SetViewRoll, SetViewRollNative)
 	SetViewRollNative(self, roll, flags, ptr);
 
 	return 0;
+}
+
+//===========================================================================
+//
+// Basic reflection
+//
+//===========================================================================
+
+static bool VerifyTypeReflect(PType * type, int side, bool isUI)
+{
+	if ((type->isIntCompatible() && !type->isInt() && !type->isEnum())
+		|| !type->isScalar()
+		|| (type->isPointer() && !type->isObjectPointer()))
+	{
+		return false;
+	}
+	else if(side == FScopeBarrier::Side_PlainData || side == (isUI ? FScopeBarrier::Side_UI : FScopeBarrier::Side_Play))
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+static PField *GetVarReflect(DObject *self, FName varname, bool isUI, PType ** out_type = nullptr)
+{
+	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
+
+	PType * type = PType::StripArray(var->Type);
+
+	if (var == NULL
+		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+		|| !VerifyTypeReflect(type, FScopeBarrier::SideFromFlags(var->Flags), isUI))
+	{
+		return nullptr;
+	}
+	else
+	{
+		if(out_type) *out_type = type;
+		return var;
+	}
+}
+
+enum EFieldType
+{
+	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
+	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
+};
+
+DEFINE_ACTION_FUNCTION(DObject, HasField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PField * field = GetVarReflect(self, fieldname, false);
+
+	ACTION_RETURN_BOOL(field != nullptr);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetFieldType)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field == nullptr)
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_UNSUPPORTED);
+	}
+
+	if(ftype->isInt() || ftype->isEnum())
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_INT);
+	}
+	else
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_UNSUPPORTED);
+	}
+}
+
+DEFINE_ACTION_FUNCTION(DObject, ArrayFieldDimensions)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PField * field = GetVarReflect(self, fieldname, false);
+
+	if(!field)
+	{
+		ACTION_RETURN_INT(0);
+	}
+
+	PType * ftype = field->Type;
+	int dimensions = 0;
+
+	while(ftype->isArray())
+	{
+		dimensions++;
+		ftype = static_cast<PArray*>(ftype)->ElementType;
+	}
+
+	ACTION_RETURN_INT(dimensions);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetArrayFieldDimensionSize)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_INT(dimension_index);
+
+	PField * field = GetVarReflect(self, fieldname, false);
+
+	if(!field)
+	{
+		ACTION_RETURN_INT(0);
+	}
+
+	PType * ftype = field->Type;
+	int cur_dimension = 0;
+
+	while(ftype->isArray())
+	{
+		if(cur_dimension == dimension_index)
+		{
+			ACTION_RETURN_INT(static_cast<PArray*>(ftype)->ElementCount);
+		}
+
+		cur_dimension++;
+		ftype = static_cast<PArray*>(ftype)->ElementType;
+	}
+
+	ACTION_RETURN_INT(0);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetObjectFieldClass)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field == nullptr || !ftype->isObjectPointer())
+	{
+		ACTION_RETURN_POINTER(nullptr);
+	}
+
+	ACTION_RETURN_POINTER(static_cast<PObjectPointer*>(ftype)->PointedClass());
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetClassFieldClass)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field == nullptr || !ftype->isClassPointer())
+	{
+		ACTION_RETURN_POINTER(nullptr);
+	}
+
+	ACTION_RETURN_POINTER(static_cast<PClassPointer*>(ftype)->ClassRestriction);
+}
+
+uint8_t * CalculateArrayOffset(VMValue *param, int numparam, const uint8_t * va_reginfo, int offset, DObject * self, PField * field)
+{
+	uint8_t * base = reinterpret_cast<uint8_t *>(self) + field->Offset;
+
+	PType * type = field->Type;
+
+	for(int i = offset; i < numparam; i++)
+	{
+		if(va_reginfo[i] != REGT_INT)
+			ThrowAbortException(X_FORMAT_ERROR, "Non-int type passed as array index");
+		if(!type->isArray())
+			return nullptr;//ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "array dimension out of bounds");
+
+		int index = param[i].ToInt(REGT_INT);
+
+		PArray *arr = static_cast<PArray*>(type);
+
+		if(index < 0 || index >= arr->ElementCount)
+			return nullptr;//ThrowAbortException(X_ARRAY_OUT_OF_BOUNDS, "array index out of bounds");
+
+		base += arr->ElementSize * index;
+		
+		type = arr->ElementType;
+	}
+
+	if(type->isArray())
+	{
+		return nullptr;
+	}
+
+	return base;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetIntField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && (ftype->isInt() || ftype->isEnum()))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(numret > 1)
+			{
+				ret[1].SetInt(ftype->GetValueInt(offset));
+			}
+
+			if(numret > 0)
+			{
+				ret[0].SetInt(1);
+			}
+
+			return numret;
+		}
+	}
+
+	if(numret > 1)
+	{
+		ret[1].SetInt(0);
+	}
+
+	if(numret > 0)
+	{
+		ret[0].SetInt(0);
+	}
+
+	return numret;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, SetIntField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_INT(fieldvalue);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+	assert(va_reginfo[2] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && (ftype->isInt() || ftype->isEnum()))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			ftype->SetValue(offset, fieldvalue);
+
+			ACTION_RETURN_BOOL(true);
+		}
+	}
+
+	ACTION_RETURN_BOOL(false);
 }
 
 //===========================================================================
