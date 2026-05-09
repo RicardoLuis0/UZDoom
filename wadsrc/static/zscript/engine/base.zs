@@ -783,6 +783,7 @@ enum EFieldType
 {
 	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
 	FIELD_TYPE_FLOAT, //float/double/etc
+	FIELD_TYPE_STRING, // string/name, TODO add TextureID/SoundID/etc as 'string' type fields
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 }
 
@@ -845,6 +846,7 @@ class Object native
 
 	native version("5.0.0") vararg bool, int GetIntField(Name field, ...) const; // GetIntField(field, array indices...), returns true and data if success
 	native version("5.0.0") vararg bool, double GetFloatField(Name field, ...) const; // GetFloatField(field, array indices...), returns true and data if success
+	native version("5.0.0") vararg bool, string GetStringField(Name field, ...) const; // GetStringField(field, array indices...), returns true and data if success
 
 	// TODO ui data getters (5.1?)
 
@@ -852,6 +854,7 @@ class Object native
 	
 	native version("5.0.0") vararg bool SetIntField(Name field, int data, ...); // SetIntField(field, data, array indices...), returns true if success
 	native version("5.0.0") vararg bool SetFloatField(Name field, double data, ...); // SetFloatField(field, data, array indices...), returns true if success
+	native version("5.0.0") vararg bool SetStringField(Name field, string data, ...); // SetStringField(field, data, array indices...), returns true if success
 
 	// ui data setters
 

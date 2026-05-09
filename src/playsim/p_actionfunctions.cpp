@@ -2998,7 +2998,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_SetViewRoll, SetViewRollNative)
 
 static bool VerifyTypeReflect(PType * type, int side, bool isUI)
 {
-	if ((type->isIntCompatible() && !type->isInt() && !type->isEnum())
+	if ((type->isIntCompatible() && !type->isInt() && !type->isEnum() && type != TypeName)
 		|| !type->isScalar()
 		|| (type->isPointer() && !type->isObjectPointer()))
 	{
@@ -3037,6 +3037,7 @@ enum EFieldType
 {
 	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
 	FIELD_TYPE_FLOAT, //float/double/etc
+	FIELD_TYPE_STRING, // string/name, TODO add TextureID/SoundID/etc as 'string' type fields
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 };
 
@@ -3070,6 +3071,10 @@ DEFINE_ACTION_FUNCTION(DObject, GetFieldType)
 	else if(ftype->isFloat())
 	{
 		ACTION_RETURN_INT(FIELD_TYPE_FLOAT);
+	}
+	else if(ftype == TypeString || ftype == TypeName)
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_STRING);
 	}
 	else
 	{
@@ -3348,6 +3353,101 @@ DEFINE_ACTION_FUNCTION(DObject, SetFloatField)
 		if(offset)
 		{
 			ftype->SetValue(offset, fieldvalue);
+
+			ACTION_RETURN_BOOL(true);
+		}
+	}
+
+	ACTION_RETURN_BOOL(false);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetStringField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && (ftype == TypeString || ftype == TypeName))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(numret > 1)
+			{
+				if(ftype == TypeString)
+				{
+					ret[1].SetString((*reinterpret_cast<FString*>(offset)));
+				}
+				else //if(ftype == TypeName)
+				{
+					FString tmp = reinterpret_cast<FName*>(offset)->GetChars();
+					ret[1].SetString(tmp);
+				}
+			}
+
+			if(numret > 0)
+			{
+				ret[0].SetInt(1);
+			}
+
+			return numret;
+		}
+	}
+
+	if(numret > 1)
+	{
+		ret[1].SetString("");
+	}
+
+	if(numret > 0)
+	{
+		ret[0].SetInt(0);
+	}
+
+	return numret;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, SetStringField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_STRING(fieldvalue);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+	assert(va_reginfo[2] == REGT_STRING);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && (ftype == TypeString || ftype == TypeName))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(ftype == TypeString)
+			{
+				(*reinterpret_cast<FString*>(offset)) = fieldvalue;
+			}
+			else //if(ftype == TypeName)
+			{
+				ftype->SetValue(offset, FName(fieldvalue).GetIndex());
+			}
 
 			ACTION_RETURN_BOOL(true);
 		}
