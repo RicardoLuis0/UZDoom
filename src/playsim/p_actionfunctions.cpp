@@ -2995,11 +2995,15 @@ DEFINE_ACTION_FUNCTION_NATIVE(AActor, A_SetViewRoll, SetViewRollNative)
 //
 //===========================================================================
 
-static PField *GetVar(DObject *self, FName varname)
+static PField *GetVarUser(DObject *self, FName varname)
 {
 	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
-	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static)) || !var->Type->isScalar())
+	if (var == NULL
+		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+		|| (var->Type->isIntCompatible() && !var->Type->isInt() && !var->Type->isEnum())
+		|| !var->Type->isScalar()
+		|| var->Type->isPointer())
 	{
 		Printf("%s is not a user variable in class %s\n", varname.GetChars(),
 			self->GetClass()->TypeName.GetChars());
@@ -3015,7 +3019,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserVar)
 	PARAM_INT	(value);
 
 	// Set the value of the specified user variable.
-	PField *var = GetVar(self, varname);
+	PField *var = GetVarUser(self, varname);
 	if (var != nullptr)
 	{
 		var->Type->SetValue(reinterpret_cast<uint8_t *>(self) + var->Offset, value);
@@ -3030,7 +3034,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserVarFloat)
 	PARAM_FLOAT	(value);
 
 	// Set the value of the specified user variable.
-	PField *var = GetVar(self, varname);
+	PField *var = GetVarUser(self, varname);
 	if (var != nullptr)
 	{
 		var->Type->SetValue(reinterpret_cast<uint8_t *>(self) + var->Offset, value);
@@ -3044,12 +3048,18 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserVarFloat)
 //
 //===========================================================================
 
-static PField *GetArrayVar(DObject *self, FName varname, int pos)
+static PField *GetArrayVarUser(DObject *self, FName varname, int pos)
 {
 	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
-	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static)) ||
-		!var->Type->isArray() || !static_cast<PArray *>(var->Type)->ElementType->isScalar())
+	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+		|| !var->Type->isArray()
+		|| (	static_cast<PArray *>(var->Type)->ElementType->isIntCompatible()
+			&& !static_cast<PArray *>(var->Type)->ElementType->isInt()
+			&& !static_cast<PArray *>(var->Type)->ElementType->isEnum()
+			)
+		|| !static_cast<PArray *>(var->Type)->ElementType->isScalar()
+		|| static_cast<PArray *>(var->Type)->ElementType->isPointer())
 	{
 		Printf("%s is not a user array in class %s\n", varname.GetChars(),
 			self->GetClass()->TypeName.GetChars());
@@ -3072,7 +3082,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserArray)
 	PARAM_INT	(value);
 
 	// Set the value of the specified user array at index pos.
-	PField *var = GetArrayVar(self, varname, pos);
+	PField *var = GetArrayVarUser(self, varname, pos);
 	if (var != nullptr)
 	{
 		PArray *arraytype = static_cast<PArray *>(var->Type);
@@ -3089,7 +3099,7 @@ DEFINE_ACTION_FUNCTION(AActor, A_SetUserArrayFloat)
 	PARAM_FLOAT	(value);
 
 	// Set the value of the specified user array at index pos.
-	PField *var = GetArrayVar(self, varname, pos);
+	PField *var = GetArrayVarUser(self, varname, pos);
 	if (var != nullptr)
 	{
 		PArray *arraytype = static_cast<PArray *>(var->Type);
