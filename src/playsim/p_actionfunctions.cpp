@@ -3036,6 +3036,7 @@ static PField *GetVarReflect(DObject *self, FName varname, bool isUI, PType ** o
 enum EFieldType
 {
 	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
+	FIELD_TYPE_FLOAT, //float/double/etc
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 };
 
@@ -3065,6 +3066,10 @@ DEFINE_ACTION_FUNCTION(DObject, GetFieldType)
 	if(ftype->isInt() || ftype->isEnum())
 	{
 		ACTION_RETURN_INT(FIELD_TYPE_INT);
+	}
+	else if(ftype->isFloat())
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_FLOAT);
 	}
 	else
 	{
@@ -3257,6 +3262,86 @@ DEFINE_ACTION_FUNCTION(DObject, SetIntField)
 	PField * field = GetVarReflect(self, fieldname, false, &ftype);
 
 	if(field && (ftype->isInt() || ftype->isEnum()))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			ftype->SetValue(offset, fieldvalue);
+
+			ACTION_RETURN_BOOL(true);
+		}
+	}
+
+	ACTION_RETURN_BOOL(false);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetFloatField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isFloat())
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(numret > 1)
+			{
+				ret[1].SetFloat(ftype->GetValueFloat(offset));
+			}
+
+			if(numret > 0)
+			{
+				ret[0].SetInt(1);
+			}
+
+			return numret;
+		}
+	}
+
+	if(numret > 1)
+	{
+		ret[1].SetFloat(0);
+	}
+
+	if(numret > 0)
+	{
+		ret[0].SetInt(0);
+	}
+
+	return numret;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, SetFloatField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_FLOAT(fieldvalue);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+	assert(va_reginfo[2] == REGT_FLOAT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isFloat())
 	{
 		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
 

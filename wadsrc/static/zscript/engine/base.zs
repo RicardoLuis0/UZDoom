@@ -782,6 +782,7 @@ struct SystemTime
 enum EFieldType
 {
 	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
+	FIELD_TYPE_FLOAT, //float/double/etc
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 }
 
@@ -843,12 +844,14 @@ class Object native
 	// TODO implement type-restricted varargs in compiler (5.1?)
 
 	native version("5.0.0") vararg bool, int GetIntField(Name field, ...) const; // GetIntField(field, array indices...), returns true and data if success
+	native version("5.0.0") vararg bool, double GetFloatField(Name field, ...) const; // GetFloatField(field, array indices...), returns true and data if success
 
 	// TODO ui data getters (5.1?)
 
 	// play data setters, can only set play and data vars
 	
 	native version("5.0.0") vararg bool SetIntField(Name field, int data, ...); // SetIntField(field, data, array indices...), returns true if success
+	native version("5.0.0") vararg bool SetFloatField(Name field, double data, ...); // SetFloatField(field, data, array indices...), returns true if success
 
 	// ui data setters
 
