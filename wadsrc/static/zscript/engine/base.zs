@@ -785,6 +785,8 @@ enum EFieldType
 	FIELD_TYPE_FLOAT, //float/double/etc
 	FIELD_TYPE_STRING, // string/name, TODO add TextureID/SoundID/etc as 'string' type fields
 	FIELD_TYPE_OBJECT, // any object
+	FIELD_TYPE_CLASS, // any class<T>
+	//FIELD_TYPE_STRUCT, // TODO allow non-native struct accesses via x.y as name
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 }
 
@@ -849,6 +851,7 @@ class Object native
 	native version("5.0.0") vararg bool, double GetFloatField(Name field, ...) const; // GetFloatField(field, array indices...), returns true and data if success
 	native version("5.0.0") vararg bool, string GetStringField(Name field, ...) const; // GetStringField(field, array indices...), returns true and data if success
 	native version("5.0.0") vararg bool, Object GetObjectField(Name field, ...) const; // GetObjectField(field, array indices...), returns true and data if success
+	native version("5.0.0") vararg bool, Class<Object> GetClassField(Name field, ...) const; // GetClassField(field, array indices...), returns true and data if success
 
 	// TODO ui data getters (5.1?)
 
@@ -858,6 +861,7 @@ class Object native
 	native version("5.0.0") vararg bool SetFloatField(Name field, double data, ...); // SetFloatField(field, data, array indices...), returns true if success
 	native version("5.0.0") vararg bool SetStringField(Name field, string data, ...); // SetStringField(field, data, array indices...), returns true if success
 	native version("5.0.0") vararg bool SetObjectField(Name field, Object data, ...); // SetObjectField(field, data, array indices...), returns true if success
+	native version("5.0.0") vararg bool SetClassField(Name field, Class<Object> data, ...); // SetClassField(field, data, array indices...), returns true if success
 
 	// ui data setters
 

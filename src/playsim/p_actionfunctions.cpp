@@ -3000,7 +3000,7 @@ static bool VerifyTypeReflect(PType * type, int side, bool isUI)
 {
 	if ((type->isIntCompatible() && !type->isInt() && !type->isEnum() && type != TypeName)
 		|| !type->isScalar()
-		|| (type->isPointer() && !type->isObjectPointer()))
+		|| (type->isPointer() && !type->isObjectPointer() && !type->isClassPointer()))
 	{
 		return false;
 	}
@@ -3039,6 +3039,8 @@ enum EFieldType
 	FIELD_TYPE_FLOAT, //float/double/etc
 	FIELD_TYPE_STRING, // string/name, TODO add TextureID/SoundID/etc as 'string' type fields
 	FIELD_TYPE_OBJECT, // any object
+	FIELD_TYPE_CLASS, // any class<T>
+	//FIELD_TYPE_STRUCT, // TODO allow non-native struct accesses via x.y as name
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 };
 
@@ -3080,6 +3082,10 @@ DEFINE_ACTION_FUNCTION(DObject, GetFieldType)
 	else if(ftype->isObjectPointer())
 	{
 		ACTION_RETURN_INT(FIELD_TYPE_OBJECT);
+	}
+	else if(ftype->isClassPointer())
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_CLASS);
 	}
 	else
 	{
@@ -3539,6 +3545,86 @@ DEFINE_ACTION_FUNCTION(DObject, SetObjectField)
 			obj = fieldvalue;
 
 			GC::WriteBarrier(self, obj);
+
+			ACTION_RETURN_BOOL(true);
+		}
+	}
+
+	ACTION_RETURN_BOOL(false);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetClassField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isClassPointer())
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(numret > 1)
+			{
+				ret[1].SetPointer(*reinterpret_cast<PClass**>(offset));
+			}
+
+			if(numret > 0)
+			{
+				ret[0].SetInt(1);
+			}
+
+			return numret;
+		}
+	}
+
+	if(numret > 1)
+	{
+		ret[1].SetObject(nullptr);
+	}
+
+	if(numret > 0)
+	{
+		ret[0].SetInt(0);
+	}
+
+	return numret;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, SetClassField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_CLASS(fieldvalue, DObject);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+	assert(va_reginfo[2] == REGT_POINTER);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isClassPointer() && fieldvalue->IsDescendantOf(static_cast<PClassPointer*>(ftype)->ClassRestriction))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			(*reinterpret_cast<PClass**>(offset)) = fieldvalue;
 
 			ACTION_RETURN_BOOL(true);
 		}
