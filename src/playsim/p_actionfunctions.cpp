@@ -3021,7 +3021,7 @@ static PField *GetVarReflect(DObject *self, FName varname, bool isUI, PType ** o
 	PType * type = PType::StripArray(var->Type);
 
 	if (var == NULL
-		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static | VARF_ReadOnly))
 		|| !VerifyTypeReflect(type, FScopeBarrier::SideFromFlags(var->Flags), isUI))
 	{
 		return nullptr;
@@ -3644,7 +3644,7 @@ static PField *GetVarUser(DObject *self, FName varname)
 	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
 	if (var == NULL
-		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+		|| (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static | VARF_ReadOnly))
 		|| (var->Type->isIntCompatible() && !var->Type->isInt() && !var->Type->isEnum())
 		|| !var->Type->isScalar()
 		|| var->Type->isPointer())
@@ -3696,7 +3696,7 @@ static PField *GetArrayVarUser(DObject *self, FName varname, int pos)
 {
 	PField *var = dyn_cast<PField>(self->GetClass()->FindSymbol(varname, true));
 
-	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static))
+	if (var == NULL || (var->Flags & (VARF_Native | VARF_Private | VARF_Protected | VARF_Static | VARF_ReadOnly))
 		|| !var->Type->isArray()
 		|| (	static_cast<PArray *>(var->Type)->ElementType->isIntCompatible()
 			&& !static_cast<PArray *>(var->Type)->ElementType->isInt()
