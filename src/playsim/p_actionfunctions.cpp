@@ -3038,6 +3038,7 @@ enum EFieldType
 	FIELD_TYPE_INT, //bool/int8/int16/int32/etc
 	FIELD_TYPE_FLOAT, //float/double/etc
 	FIELD_TYPE_STRING, // string/name, TODO add TextureID/SoundID/etc as 'string' type fields
+	FIELD_TYPE_OBJECT, // any object
 	FIELD_TYPE_UNSUPPORTED // any structs/textureid/spriteid/array<T>/map<K,V>/etc
 };
 
@@ -3075,6 +3076,10 @@ DEFINE_ACTION_FUNCTION(DObject, GetFieldType)
 	else if(ftype == TypeString || ftype == TypeName)
 	{
 		ACTION_RETURN_INT(FIELD_TYPE_STRING);
+	}
+	else if(ftype->isObjectPointer())
+	{
+		ACTION_RETURN_INT(FIELD_TYPE_OBJECT);
 	}
 	else
 	{
@@ -3448,6 +3453,92 @@ DEFINE_ACTION_FUNCTION(DObject, SetStringField)
 			{
 				ftype->SetValue(offset, FName(fieldvalue).GetIndex());
 			}
+
+			ACTION_RETURN_BOOL(true);
+		}
+	}
+
+	ACTION_RETURN_BOOL(false);
+}
+
+DEFINE_ACTION_FUNCTION(DObject, GetObjectField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isObjectPointer())
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			if(numret > 1)
+			{
+				DObject * obj = *reinterpret_cast<DObject**>(offset);
+				GC::ReadBarrier(obj);
+				ret[1].SetObject(obj);
+			}
+
+			if(numret > 0)
+			{
+				ret[0].SetInt(1);
+			}
+
+			return numret;
+		}
+	}
+
+	if(numret > 1)
+	{
+		ret[1].SetObject(nullptr);
+	}
+
+	if(numret > 0)
+	{
+		ret[0].SetInt(0);
+	}
+
+	return numret;
+}
+
+DEFINE_ACTION_FUNCTION(DObject, SetObjectField)
+{
+	PARAM_SELF_PROLOGUE(DObject);
+	PARAM_NAME(fieldname);
+	PARAM_OBJECT(fieldvalue, DObject);
+
+	PARAM_VA_POINTER(va_reginfo);
+
+	numparam--; // subtract numparam because va_reginfo is passed as one
+
+	assert(va_reginfo[0] == REGT_POINTER);
+	assert(va_reginfo[1] == REGT_INT);
+	assert(va_reginfo[2] == REGT_POINTER);
+
+	PType * ftype;
+	PField * field = GetVarReflect(self, fieldname, false, &ftype);
+
+	if(field && ftype->isObjectPointer() && fieldvalue->GetClass()->IsDescendantOf(static_cast<PObjectPointer*>(ftype)->PointedClass()))
+	{
+		uint8_t * offset = CalculateArrayOffset(param, numparam, va_reginfo, paramnum + 1, self, field);
+
+		if(offset)
+		{
+			DObject * &obj = *reinterpret_cast<DObject**>(offset);
+
+			obj = fieldvalue;
+
+			GC::WriteBarrier(self, obj);
 
 			ACTION_RETURN_BOOL(true);
 		}
