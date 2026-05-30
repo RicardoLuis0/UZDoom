@@ -884,23 +884,6 @@ void FGameConfigFile::DoModSetup(const char *gamename)
 	bModSetup = true;
 }
 
-void FGameConfigFile::ReadNetVars ()
-{
-	strncpy (subsection, "NetServerInfo", sublen);
-	if (SetSection (section))
-	{
-		ReadCVars (0);
-	}
-	if (bModSetup)
-	{
-		mysnprintf(subsection, sublen, "NetServerInfo.Mod");
-		if (SetSection(section))
-		{
-			ReadCVars(CVAR_MOD|CVAR_SERVERINFO|CVAR_IGNORE);
-		}
-	}
-}
-
 // Read cvars from a cvar section of the ini. Flags are the flags to give
 // to newly-created cvars that were not already defined.
 void FGameConfigFile::ReadCVars (uint32_t flags)

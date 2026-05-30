@@ -47,7 +47,6 @@ public:
 	void ArchiveGameData (const char *gamename);
 	void AddAutoexec (FArgs *list, const char *gamename);
 	FString GetConfigPath (bool tryProg);
-	void ReadNetVars ();
 
 protected:
 	void WriteCommentHeader (FileWriter *file) const;
