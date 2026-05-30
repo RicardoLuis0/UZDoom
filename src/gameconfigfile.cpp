@@ -924,26 +924,20 @@ void FGameConfigFile::ReadCVars (uint32_t flags)
 
 void FGameConfigFile::ArchiveGameData (const char *gamename)
 {
-	char section[32*3], *subsection;
+	FString section(gamename);
 
-	sublen = countof(section) - 1 - mysnprintf (section, countof(section), "%s.", gamename);
-	subsection = section + countof(section) - 1 - sublen;
-
-	strncpy (subsection, "Player", sublen);
-	SetSection (section, true);
+	SetSection (section + ".Player", true);
 	ClearCurrentSection ();
 	C_ArchiveCVars (this, CVAR_ARCHIVE|CVAR_USERINFO);
 
 	if (bModSetup)
 	{
-		strncpy (subsection + 6, ".Mod", sublen - 6);
-		SetSection (section, true);
+		SetSection (section + ".Player.Mod", true);
 		ClearCurrentSection ();
 		C_ArchiveCVars (this, CVAR_MOD|CVAR_ARCHIVE|CVAR_AUTO|CVAR_USERINFO);
 	}
 
-	strncpy (subsection, "ConsoleVariables", sublen);
-	SetSection (section, true);
+	SetSection (section + ".ConsoleVariables", true);
 	ClearCurrentSection ();
 	C_ArchiveCVars (this, CVAR_ARCHIVE);
 
@@ -951,55 +945,46 @@ void FGameConfigFile::ArchiveGameData (const char *gamename)
 	// this machine was not the initial host.
 	if (!netgame || consoleplayer == 0)
 	{
-		strncpy (subsection, netgame ? "NetServerInfo" : "LocalServerInfo", sublen);
-		SetSection (section, true);
+		SetSection (section + (netgame ? ".NetServerInfo" : ".LocalServerInfo"), true);
 		ClearCurrentSection ();
 		C_ArchiveCVars (this, CVAR_ARCHIVE|CVAR_SERVERINFO);
 
 		if (bModSetup)
 		{
-			strncpy (subsection, netgame ? "NetServerInfo.Mod" : "LocalServerInfo.Mod", sublen);
-			SetSection (section, true);
+			SetSection (section + (netgame ? ".NetServerInfo.Mod" : ".LocalServerInfo.Mod"), true);
 			ClearCurrentSection ();
 			C_ArchiveCVars (this, CVAR_MOD|CVAR_ARCHIVE|CVAR_AUTO|CVAR_SERVERINFO);
 		}
 	}
 
-	strncpy (subsection, "ConfigOnlyVariables", sublen);
-	SetSection (section, true);
+	SetSection (section + ".ConfigOnlyVariables", true);
 	ClearCurrentSection ();
 	C_ArchiveCVars (this, CVAR_ARCHIVE|CVAR_AUTO|CVAR_CONFIG_ONLY);
 
 	if (bModSetup)
 	{
-		strncpy (subsection, "ConfigOnlyVariables.Mod", sublen);
-		SetSection (section, true);
+		SetSection (section + ".ConfigOnlyVariables.Mod", true);
 		ClearCurrentSection ();
 		C_ArchiveCVars (this, CVAR_ARCHIVE|CVAR_AUTO|CVAR_MOD|CVAR_CONFIG_ONLY);
 	}
 
-	strncpy (subsection, "UnknownConsoleVariables", sublen);
-	SetSection (section, true);
+	SetSection (section + ".UnknownConsoleVariables", true);
 	ClearCurrentSection ();
 	C_ArchiveCVars (this, CVAR_ARCHIVE|CVAR_AUTO);
 
-	strncpy (subsection, "ConsoleAliases", sublen);
-	SetSection (section, true);
+	SetSection (section + ".ConsoleAliases", true);
 	ClearCurrentSection ();
 	C_ArchiveAliases (this);
 
-	M_SaveCustomKeys (this, section, subsection, sublen);
+	M_SaveCustomKeys (this, section);
 
-	strcpy (subsection, "Bindings");
-	SetSection (section, true);
+	SetSection (section + ".Bindings", true);
 	Bindings.ArchiveBindings (this);
 
-	strncpy (subsection, "DoubleBindings", sublen);
-	SetSection (section, true);
+	SetSection (section + ".DoubleBindings", true);
 	DoubleBindings.ArchiveBindings (this);
 
-	strncpy (subsection, "AutomapBindings", sublen);
-	SetSection (section, true);
+	SetSection (section + ".AutomapBindings", true);
 	AutomapBindings.ArchiveBindings (this);
 }
 
