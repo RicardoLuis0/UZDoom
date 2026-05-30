@@ -865,21 +865,23 @@ void FGameConfigFile::DoKeySetup(const char *gamename)
 // Called after CVARINFO has been parsed.
 void FGameConfigFile::DoModSetup(const char *gamename)
 {
-	mysnprintf(section, countof(section), "%s.Player.Mod", gamename);
-	if (SetSection(section))
+	FString section(gamename);
+
+	if(SetSection(section + ".Player.Mod"))
 	{
 		ReadCVars(CVAR_MOD|CVAR_USERINFO|CVAR_IGNORE);
 	}
-	mysnprintf(section, countof(section), "%s.LocalServerInfo.Mod", gamename);
-	if (SetSection (section))
+
+	if(SetSection(section + ".LocalServerInfo.Mod"))
 	{
 		ReadCVars (CVAR_MOD|CVAR_SERVERINFO|CVAR_IGNORE);
 	}
-	mysnprintf(section, countof(section), "%s.ConfigOnlyVariables.Mod", gamename);
-	if (SetSection (section))
+
+	if(SetSection(section + ".ConfigOnlyVariables.Mod"))
 	{
 		ReadCVars (CVAR_MOD|CVAR_CONFIG_ONLY|CVAR_IGNORE);
 	}
+
 	// Signal that these sections should be rewritten when saving the config.
 	bModSetup = true;
 }
