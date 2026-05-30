@@ -57,6 +57,8 @@ private:
 	void SetStrifeDefaults ();
 	void ReadCVars (unsigned flags);
 
+	bool bGameSetup;
+	bool bKeySetup;
 	bool bModSetup;
 	int bResetBindFlags;
 };

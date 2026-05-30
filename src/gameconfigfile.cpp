@@ -169,6 +169,8 @@ FGameConfigFile::FGameConfigFile ()
 
 	OkayToWrite = false;	// Do not allow saving of the config before DoKeySetup()
 	bModSetup = false;
+	bGameSetup = false;
+	bKeySetup = false;
 	bResetBindFlags = 0;
 	pathname = GetConfigPath (true);
 	ChangePathName (pathname.GetChars());
@@ -777,11 +779,15 @@ void FGameConfigFile::DoGameSetup(FString section)
 			}
 		}
 	}
+
+	bGameSetup = true;
 }
 
 // Moved from DoGameSetup so that it can happen after wads are loaded
 void FGameConfigFile::DoKeySetup(FString section)
 {
+	assert(bGameSetup);
+
 	constexpr int numbindings = 3;
 
 	static const struct { const char *label; FKeyBindings *bindings; } binders[numbindings] =
@@ -844,6 +850,8 @@ void FGameConfigFile::DoKeySetup(FString section)
 		Bindings.DefaultBind("F11", "bumplight");
 	}
 
+	bKeySetup = true;
+
 	OkayToWrite = true;
 }
 
@@ -894,6 +902,7 @@ void FGameConfigFile::ReadCVars(uint32_t flags)
 
 void FGameConfigFile::ArchiveGameData(FString section)
 {
+	if(!bGameSetup) return;
 
 	SetSection (section + ".Player", true);
 	ClearCurrentSection ();
@@ -944,6 +953,8 @@ void FGameConfigFile::ArchiveGameData(FString section)
 	SetSection (section + ".ConsoleAliases", true);
 	ClearCurrentSection ();
 	C_ArchiveAliases (this);
+
+	if(!bKeySetup) return;
 
 	M_SaveCustomKeys (this, section);
 
