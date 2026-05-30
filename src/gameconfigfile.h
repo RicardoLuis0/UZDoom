@@ -61,6 +61,9 @@ private:
 	bool bKeySetup;
 	bool bModSetup;
 	int bResetBindFlags;
+
+	double EngineLastRunVer;
+	double GameLastRunVer;
 };
 
 extern FGameConfigFile *GameConfig;
