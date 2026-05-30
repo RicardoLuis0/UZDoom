@@ -719,12 +719,10 @@ void FGameConfigFile::DoGlobalSetup ()
 	}
 }
 
-void FGameConfigFile::DoGameSetup (const char *gamename)
+void FGameConfigFile::DoGameSetup(FString section)
 {
 	const char *key;
 	const char *value;
-
-	FString section(gamename);
 
 	if (SetSection (section + ".UnknownConsoleVariables"))
 	{
@@ -782,7 +780,7 @@ void FGameConfigFile::DoGameSetup (const char *gamename)
 }
 
 // Moved from DoGameSetup so that it can happen after wads are loaded
-void FGameConfigFile::DoKeySetup(const char *gamename)
+void FGameConfigFile::DoKeySetup(FString section)
 {
 	constexpr int numbindings = 3;
 
@@ -793,8 +791,6 @@ void FGameConfigFile::DoKeySetup(const char *gamename)
 		{ ".AutomapBindings", &AutomapBindings }
 	};
 	const char *key, *value;
-
-	FString section(gamename);
 
 	C_SetDefaultBindings ();
 
@@ -853,9 +849,8 @@ void FGameConfigFile::DoKeySetup(const char *gamename)
 
 // Like DoGameSetup(), but for mod-specific cvars.
 // Called after CVARINFO has been parsed.
-void FGameConfigFile::DoModSetup(const char *gamename)
+void FGameConfigFile::DoModSetup(FString section)
 {
-	FString section(gamename);
 
 	if(SetSection(section + ".Player.Mod"))
 	{
@@ -878,7 +873,7 @@ void FGameConfigFile::DoModSetup(const char *gamename)
 
 // Read cvars from a cvar section of the ini. Flags are the flags to give
 // to newly-created cvars that were not already defined.
-void FGameConfigFile::ReadCVars (uint32_t flags)
+void FGameConfigFile::ReadCVars(uint32_t flags)
 {
 	const char *key, *value;
 	FBaseCVar *cvar;
@@ -897,9 +892,8 @@ void FGameConfigFile::ReadCVars (uint32_t flags)
 	}
 }
 
-void FGameConfigFile::ArchiveGameData (const char *gamename)
+void FGameConfigFile::ArchiveGameData(FString section)
 {
-	FString section(gamename);
 
 	SetSection (section + ".Player", true);
 	ClearCurrentSection ();

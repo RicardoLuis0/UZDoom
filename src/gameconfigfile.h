@@ -40,11 +40,11 @@ public:
 
 	void DoAutoloadSetup (FIWadManager *iwad_man);
 	void DoGlobalSetup ();
-	void DoGameSetup (const char *gamename);
-	void DoKeySetup (const char *gamename);
-	void DoModSetup (const char *gamename);
+	void DoGameSetup (FString gamename);
+	void DoKeySetup (FString gamename);
+	void DoModSetup (FString gamename);
 	void ArchiveGlobalData ();
-	void ArchiveGameData (const char *gamename);
+	void ArchiveGameData (FString gamename);
 	void AddAutoexec (FArgs *list, const char *gamename);
 	FString GetConfigPath (bool tryProg);
 
