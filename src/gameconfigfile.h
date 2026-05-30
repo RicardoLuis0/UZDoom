@@ -59,10 +59,6 @@ private:
 
 	bool bModSetup;
 	int bResetBindFlags;
-
-	char section[64];
-	char *subsection;
-	size_t sublen;
 };
 
 extern FGameConfigFile *GameConfig;

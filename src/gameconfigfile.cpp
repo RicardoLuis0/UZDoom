@@ -724,24 +724,19 @@ void FGameConfigFile::DoGameSetup (const char *gamename)
 	const char *key;
 	const char *value;
 
-	sublen = countof(section) - 1 - mysnprintf (section, countof(section), "%s.", gamename);
-	subsection = section + countof(section) - sublen - 1;
-	section[countof(section) - 1] = '\0';
+	FString section(gamename);
 
-	strncpy (subsection, "UnknownConsoleVariables", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".UnknownConsoleVariables"))
 	{
 		ReadCVars (0);
 	}
 
-	strncpy (subsection, "ConfigOnlyVariables", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".ConfigOnlyVariables"))
 	{
 		ReadCVars (0);
 	}
 
-	strncpy (subsection, "ConsoleVariables", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".ConsoleVariables"))
 	{
 		ReadCVars (0);
 	}
@@ -758,20 +753,17 @@ void FGameConfigFile::DoGameSetup (const char *gamename)
 
 	// The NetServerInfo section will be read and override anything loaded
 	// here when it's determined that a netgame is being played.
-	strncpy (subsection, "LocalServerInfo", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".LocalServerInfo"))
 	{
 		ReadCVars (0);
 	}
 
-	strncpy (subsection, "Player", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".Player"))
 	{
 		ReadCVars (0);
 	}
 
-	strncpy (subsection, "ConsoleAliases", sublen);
-	if (SetSection (section))
+	if (SetSection (section + ".ConsoleAliases"))
 	{
 		const char *name = NULL;
 		while (NextInSection (key, value))
