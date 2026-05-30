@@ -167,7 +167,7 @@ FGameConfigFile::FGameConfigFile ()
 {
 	FString pathname;
 
-	OkayToWrite = false;	// Do not allow saving of the config before DoKeySetup()
+	OkayToWrite = false;	// Do not allow saving of the config before DoGlobalSetup()
 	bModSetup = false;
 	bGameSetup = false;
 	bKeySetup = false;
@@ -699,6 +699,8 @@ void FGameConfigFile::DoGlobalSetup ()
 			language = "auto";
 		}
 	}
+
+	OkayToWrite = true;
 }
 
 void FGameConfigFile::DoGameSetup(FString section)
@@ -834,8 +836,6 @@ void FGameConfigFile::DoKeySetup(FString section)
 	}
 
 	bKeySetup = true;
-
-	OkayToWrite = true;
 }
 
 // Like DoGameSetup(), but for mod-specific cvars.
