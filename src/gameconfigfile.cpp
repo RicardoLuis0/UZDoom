@@ -792,25 +792,23 @@ void FGameConfigFile::DoGameSetup (const char *gamename)
 // Moved from DoGameSetup so that it can happen after wads are loaded
 void FGameConfigFile::DoKeySetup(const char *gamename)
 {
-	static const struct { const char *label; FKeyBindings *bindings; } binders[] =
+	constexpr int numbindings = 3;
+
+	static const struct { const char *label; FKeyBindings *bindings; } binders[numbindings] =
 	{
-		{ "Bindings", &Bindings },
-		{ "DoubleBindings", &DoubleBindings },
-		{ "AutomapBindings", &AutomapBindings },
-		{ NULL, NULL }
+		{ ".Bindings", &Bindings },
+		{ ".DoubleBindings", &DoubleBindings },
+		{ ".AutomapBindings", &AutomapBindings }
 	};
 	const char *key, *value;
 
-	sublen = countof(section) - 1 - mysnprintf(section, countof(section), "%s.", gamename);
-	subsection = section + countof(section) - sublen - 1;
-	section[countof(section) - 1] = '\0';
+	FString section(gamename);
 
 	C_SetDefaultBindings ();
 
-	for (int i = 0; binders[i].label != NULL; ++i)
+	for (int i = 0; i < numbindings; ++i)
 	{
-		strncpy(subsection, binders[i].label, sublen);
-		if (SetSection(section))
+		if (SetSection(section + binders[i].label))
 		{
 			FKeyBindings *bindings = binders[i].bindings;
 			bindings->UnbindAll();
