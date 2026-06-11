@@ -25,7 +25,7 @@
 
 #include "vmintern.h"
 
-#ifdef HAS_DEBUG_SYMBOLS
+#if defined(HAS_DEBUG_SYMBOLS) && defined(_WIN32)
 	#define JIT_INCLUDE_STACK_FRAME true
 #else
 	#define JIT_INCLUDE_STACK_FRAME false
