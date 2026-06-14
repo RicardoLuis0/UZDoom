@@ -72,7 +72,8 @@ enum MaterialShaderIndex
 	SHADER_NoiseFuzz,
 	SHADER_SmoothNoiseFuzz,
 	SHADER_SoftwareFuzz,
-	FIRST_USER_SHADER
+	NUM_BUILTIN_SHADERS,
+	FIRST_USER_SHADER = NUM_BUILTIN_SHADERS
 };
 
 enum texflags
@@ -91,6 +92,7 @@ enum
 	SFlag_Brightmap = 1,
 	SFlag_Detailmap = 2,
 	SFlag_Glowmap = 4,
+	SFlag_Global = 8,
 };
 
 struct UserShaderDesc
