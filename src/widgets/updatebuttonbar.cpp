@@ -297,7 +297,7 @@ public:
 
 				for(auto &btn : btns)
 				{
-					bool align_right = !ignore_right_align && (actions[count].flags & ACTIONF_FLOAT_RIGHT) || ((count + 1) == btns.size() && float_last_right);
+					bool align_right = !ignore_right_align && ((actions[count].flags & ACTIONF_FLOAT_RIGHT) || ((count + 1) == btns.size() && float_last_right));
 
 					int len = btn->GetPreferredWidth();
 
