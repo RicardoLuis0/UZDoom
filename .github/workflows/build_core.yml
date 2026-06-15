@@ -339,7 +339,7 @@ jobs:
         mkdir -p package/fm_banks
         cp -f ../fm_banks/GENMIDI.GS.wopl ../fm_banks/gs-by-papiezak-and-sneakernets.wopn package/fm_banks
 
-        mv -f *.exe *.pk3 package
+        mv -f *.exe *.pk3 *.pdb package
 
         cd package
         7z a -sdel -r "${NAME}.zip" *
