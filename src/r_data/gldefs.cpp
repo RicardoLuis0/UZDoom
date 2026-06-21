@@ -1496,7 +1496,7 @@ class GLDefsParser
 
 		tex->SetNoMipmap(no_mipmap);
 
-		FGameTexture **bindings[6] =
+		FGameTexture **bindings[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] =
 		{
 			&mlay.Brightmap,
 			&mlay.Normal,
@@ -1505,7 +1505,7 @@ class GLDefsParser
 			&mlay.Roughness,
 			&mlay.AmbientOcclusion
 		};
-		for (int i = 0; keywords[i] != nullptr; i++)
+		for (int i = 0; i < GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES; i++)
 		{
 			if (textures[i])
 			{
