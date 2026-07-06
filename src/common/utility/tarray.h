@@ -888,7 +888,7 @@ concept IsPointer = std::is_pointer<T>::value;
 
 // TDeletingArray -----------------------------------------------------------
 // An array that deletes its elements when it gets deleted.
-template<IsPointer T>
+template<IsPointer T, bool reverseOrderDelete = false>
 class TDeletingArray : public TArray<T>
 {
 public:
@@ -903,18 +903,40 @@ public:
 
 	~TDeletingArray()
 	{
-		for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+		if constexpr(reverseOrderDelete)
 		{
-			if ((*this)[i])
-				delete (*this)[i];
+			for (int64_t i = (TArray<T>::Size() - 1); i > 0; i--)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
+		}
+		else
+		{
+			for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
 		}
 	}
 	void DeleteAndClear()
 	{
-		for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+		if constexpr(reverseOrderDelete)
 		{
-			if ((*this)[i])
-				delete (*this)[i];
+			for (int64_t i = (TArray<T>::Size() - 1); i > 0; i--)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
+		}
+		else
+		{
+			for (unsigned int i = 0; i < TArray<T>::Size(); ++i)
+			{
+				if ((*this)[i])
+					delete (*this)[i];
+			}
 		}
 		TArray<T>::Clear();
 	}
