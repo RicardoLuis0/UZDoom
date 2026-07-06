@@ -768,6 +768,10 @@ public:
 	{
 		return (int)Count;
 	}
+	int64_t SSize64() const
+	{
+		return (int)Count;
+	}
 	unsigned int Max () const
 	{
 		return Most;
@@ -905,7 +909,7 @@ public:
 	{
 		if constexpr(reverseOrderDelete)
 		{
-			for (int64_t i = (TArray<T>::Size() - 1); i > 0; i--)
+			for (int64_t i = (TArray<T>::SSize64() - 1); i >= 0; i--)
 			{
 				if ((*this)[i])
 					delete (*this)[i];
@@ -924,7 +928,7 @@ public:
 	{
 		if constexpr(reverseOrderDelete)
 		{
-			for (int64_t i = (TArray<T>::Size() - 1); i > 0; i--)
+			for (int64_t i = (TArray<T>::SSize64() - 1); i >= 0; i--)
 			{
 				if ((*this)[i])
 					delete (*this)[i];
