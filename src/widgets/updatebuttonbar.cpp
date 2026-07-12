@@ -1385,17 +1385,17 @@ public:
 						updater_filename_quoted.Substitute("\\", "\\\\");
 						updater_filename_quoted.Substitute("\"", "\\\"");
 						updater_filename_quoted = "\""+updater_filename_quoted+"\"";
-						
-						int numchars = MultiByteToWideChar(CP_UTF8, 0, updater_filename.c_str(), updater_filename.length(), NULL, 0);
+
+						int numchars = MultiByteToWideChar(CP_UTF8, 0, updater_filename.c_str(), static_cast<int>(updater_filename.length()), NULL, 0);
 
 						WCHAR * updater_filename_w = new WCHAR[numchars + 1];
-						MultiByteToWideChar(CP_UTF8, 0, updater_filename.c_str(), updater_filename.length(), updater_filename_w, numchars);
+						MultiByteToWideChar(CP_UTF8, 0, updater_filename.c_str(), static_cast<int>(updater_filename.length()), updater_filename_w, numchars);
 						updater_filename_w[numchars] = 0;
 
-						numchars = MultiByteToWideChar(CP_UTF8, 0, updater_filename_quoted.GetChars(), updater_filename_quoted.Len(), NULL, 0);
+						numchars = MultiByteToWideChar(CP_UTF8, 0, updater_filename_quoted.GetChars(), static_cast<int>(updater_filename_quoted.Len()), NULL, 0);
 
 						WCHAR * updater_filename_quoted_w = new WCHAR[numchars + 1];
-						MultiByteToWideChar(CP_UTF8, 0, updater_filename_quoted.GetChars(), updater_filename_quoted.Len(), updater_filename_quoted_w, numchars);
+						MultiByteToWideChar(CP_UTF8, 0, updater_filename_quoted.GetChars(), static_cast<int>(updater_filename_quoted.Len()), updater_filename_quoted_w, numchars);
 						updater_filename_quoted_w[numchars] = 0;
 
 						argv[0] = updater_filename_quoted_w;
@@ -1595,7 +1595,7 @@ std::optional<update_info_t> UpdateButtonBar::GetUpdateInfo(bool &ok)
 					std::vector<std::optional<update_info_t>> updates;
 					auto arr = doc->GetArray();
 					bool anyok = false;
-					for(int i = 0; i < arr.Size(); i++)
+					for(int i = 0; i < static_cast<int>(arr.Size()); i++)
 					{
 						if(!arr[i].IsObject() || !arr[i].HasMember("tag_name") || !arr[i]["tag_name"].IsString() || arr[i]["tag_name"].GetString()[0] < '0' || arr[i]["tag_name"].GetString()[0] > '9')
 						{
