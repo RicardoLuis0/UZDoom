@@ -1,6 +1,8 @@
 #ifdef WIN32
 
+#ifndef _CRT_SECURE_NO_WARNINGS
 #define _CRT_SECURE_NO_WARNINGS
+#endif
 
 #include "fluidsynth_priv.h"
 #include "fluid_sys.h"
