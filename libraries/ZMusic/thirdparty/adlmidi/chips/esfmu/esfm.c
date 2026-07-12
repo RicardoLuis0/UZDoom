@@ -1740,10 +1740,14 @@ ESFM_slot_generate_emu(esfm_slot *slot)
 }
 
 /* ------------------------------------------------------------------------- */
+#ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#endif
+#ifdef __clang__
 #pragma clang diagnostic ignored "-Wunused-variable"
 #pragma clang diagnostic ignored "-Wunknown-pragmas"
+#endif
 static void
 ESFM_process_feedback(esfm_chip *chip)
 {
