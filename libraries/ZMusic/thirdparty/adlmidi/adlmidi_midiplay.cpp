@@ -1557,7 +1557,7 @@ bool MIDIplay::killSecondVoicesIfOverflow(int32_t &new_chan)
     int free2op = 0;
     int32_t volume = -1;
 
-    for(size_t a = 0; a < (size_t)synth.m_numChannels; ++a)
+    for(int32_t a = 0; a < (int32_t)synth.m_numChannels; ++a)
     {
         if(synth.m_channelCategory[a] != OPL3::ChanCat_Regular)
             continue;
@@ -1619,7 +1619,7 @@ void MIDIplay::prepareChipChannelForNewNote(size_t c, const MIDIchannel::NoteInf
             AdlChannel::LocationData &jd = j->value;
             ++jnext;
 
-            m_midiChannels[jd.loc.MidCh].clear_all_phys_users(c);
+            m_midiChannels[jd.loc.MidCh].clear_all_phys_users(static_cast<unsigned>(c));
             m_chipChannels[c].users.erase(j);
         }
 

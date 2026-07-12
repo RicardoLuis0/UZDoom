@@ -239,7 +239,7 @@ fluid_iir_filter_apply_local(fluid_iir_filter_t *iir_filter, fluid_real_t *dsp_b
                         LOG_FILTER("!!!OOPS!!! limited Q to its minimum value, was: %f", q);
                         LOG_FILTER("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                         q_incr_count = 0;
-                        q = Q_MIN;
+                        q = static_cast<IIR_COEFF_T>(Q_MIN);
                     }
                 }
 

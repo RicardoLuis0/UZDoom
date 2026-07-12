@@ -1395,7 +1395,7 @@ void OPNMIDIplay::prepareChipChannelForNewNote(size_t c, const MIDIchannel::Note
             OpnChannel::LocationData &jd = j->value;
             ++jnext;
 
-            m_midiChannels[jd.loc.MidCh].clear_all_phys_users(c);
+            m_midiChannels[jd.loc.MidCh].clear_all_phys_users(static_cast<unsigned>(c));
             m_chipChannels[c].users.erase(j);
         }
 

@@ -142,7 +142,14 @@ static uint32_t Zip_FindCentralDir(FILE* fin, bool* zip64)
 
 	auto pos = ftell(fin);
 	fseek(fin, 0, SEEK_END);
-	FileSize = ftell(fin);
+	uint64_t FileSizeRaw = ftell(fin);
+
+	if(FileSizeRaw > UINT32_MAX)
+	{ // TODO properly support larger zip files
+		return 0;
+	}
+
+	FileSize = static_cast<uint32_t>(FileSizeRaw);
 	fseek(fin, pos, SEEK_SET);
 	uMaxBack = std::min<uint32_t>(0xffff, FileSize);
 
@@ -481,7 +488,6 @@ int FZipFile::FindEntry(const char *name)
 
 FZipFile *Open(FILE* file)
 {
-	char head[4];
 	FZipLocalFileHeader hdr;
 
 	if (fread(&hdr, 1, sizeof(hdr), file) < sizeof(hdr))

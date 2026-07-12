@@ -32,7 +32,7 @@
 **
 */
 
-
+#include <cassert>
 #include "zmusic/zmusic_internal.h"
 #include "sndfile_decoder.h"
 #include "mpg123_decoder.h"
@@ -131,7 +131,8 @@ short* dumb_decode_vorbis(int outlen, const void* oggstream, int sizebytes)
 			}
 			if(got < tempsize)
 				break;
-			done += got;
+			assert(got < INT32_MAX);
+			done += static_cast<int>(got);
 		}
 	}
 	else if(type == SampleType_UInt8)
@@ -149,7 +150,8 @@ short* dumb_decode_vorbis(int outlen, const void* oggstream, int sizebytes)
 				samples[spos++] = (short)((temp[i]-128) * 256);
 			if(got < tempsize)
 				break;
-			done += got;
+			assert(got < INT32_MAX);
+			done += static_cast<int>(got);
 		}
 	}
 	delete decoder;

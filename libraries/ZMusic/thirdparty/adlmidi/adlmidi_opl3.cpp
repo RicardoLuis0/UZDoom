@@ -1670,7 +1670,7 @@ void OPL3::updateChannelCategories()
         else
         {
             for(size_t b = 0; b < NUM_OF_RM_CHANNELS; ++b)
-                m_channelCategory[p++] = (ChanCat_Rhythm_Bass + b);
+                m_channelCategory[p++] = static_cast<uint32_t>(ChanCat_Rhythm_Bass + b);
         }
     }
 

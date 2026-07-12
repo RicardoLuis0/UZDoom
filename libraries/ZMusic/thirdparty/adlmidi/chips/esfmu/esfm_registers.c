@@ -417,9 +417,9 @@ ESFM_write_reg_native (esfm_chip *chip, uint16_t address, uint8_t data)
 	if (address < KEY_ON_REGS_START)
 	{
 		/* Slot register write */
-		size_t channel_idx = address >> 5;
-		size_t slot_idx = (address >> 3) & 0x03;
-		size_t register_idx = address & 0x07;
+		uint16_t channel_idx = address >> 5;
+		uint8_t slot_idx = (address >> 3) & 0x03;
+		uint8_t register_idx = address & 0x07;
 		esfm_slot *slot = &chip->channels[channel_idx].slots[slot_idx];
 
 		ESFM_slot_write(slot, register_idx, data);
@@ -515,8 +515,8 @@ ESFM_readback_reg_native (esfm_chip *chip, uint16_t address)
 	{
 		/* Slot register read */
 		size_t channel_idx = address >> 5;
-		size_t slot_idx = (address >> 3) & 0x03;
-		size_t register_idx = address & 0x07;
+		uint8_t slot_idx = (address >> 3) & 0x03;
+		uint8_t register_idx = address & 0x07;
 		esfm_slot *slot = &chip->channels[channel_idx].slots[slot_idx];
 
 		data = ESFM_slot_readback(slot, register_idx);
@@ -971,10 +971,10 @@ ESFM_init (esfm_chip *chip)
 			slot = &channel->slots[slot_idx];
 
 			channel->chip = chip;
-			channel->channel_idx = channel_idx;
+			channel->channel_idx = (uint5)(channel_idx);
 			slot->channel = channel;
 			slot->chip = chip;
-			slot->slot_idx = slot_idx;
+			slot->slot_idx = (uint2)(slot_idx);
 			slot->in.eg_position = slot->in.eg_output = 0x1ff;
 			slot->in.eg_state = EG_RELEASE;
 			slot->in.emu_mod_enable = ~((int13) 0);
