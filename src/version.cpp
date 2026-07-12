@@ -93,6 +93,7 @@ VersionInfo GetCurrentVersionForUpdate(UpdateChannel channel)
 
 	switch(channel)
 	{
+	default:
 	case UpdateChannel::STABLE:
 	case UpdateChannel::RELEASE_CANDIDATE:
 		return VersionInfo(VER_MAJOR, VER_MINOR, VER_REVISION, RC_REVISION);
