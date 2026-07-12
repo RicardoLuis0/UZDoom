@@ -57,7 +57,6 @@ AboutPage::AboutPage(LauncherWindow* launcher, const FStartupSelectionInfo& info
 			text.AppendCStrPart(data.string(), data.size());
 		};
 
-		int lump;
 		if (resf)
 		{
 			append("about.txt");
