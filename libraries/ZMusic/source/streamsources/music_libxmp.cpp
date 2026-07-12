@@ -137,7 +137,7 @@ bool XMPSong::GetData(void *buffer, size_t len)
 		float* soundbuffer = (float*)buffer;
 		for (unsigned int i = 0; i < len / 4; i++)
 		{
-			soundbuffer[i] = ((int16_buffer[i] < 0.) ? (int16_buffer[i] / 32768.) : (int16_buffer[i] / 32767.)) * dumbConfig.mod_dumb_mastervolume;
+			soundbuffer[i] = static_cast<float>(((int16_buffer[i] < 0.) ? (int16_buffer[i] / 32768.) : (int16_buffer[i] / 32767.)) * dumbConfig.mod_dumb_mastervolume);
 		}
 	}
 

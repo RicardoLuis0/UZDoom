@@ -110,7 +110,7 @@ Win32DisplayWindow::Win32DisplayWindow(DisplayWindowHost* windowHost, Win32Displ
 		style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | (params.resizable ? (WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX) : WS_MINIMIZEBOX);
 	}
 
-	float scale = GetDpiForSystem()/96.0;
+	float scale = GetDpiForSystem()/96.0f;
 	resizable = params.resizable;
 	minW = static_cast<int>(std::floor(scale * params.minSize.width));
 	minH = static_cast<int>(std::floor(scale * params.minSize.height));

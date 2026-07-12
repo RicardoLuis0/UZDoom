@@ -272,7 +272,7 @@ void OPNMIDIDevice::ChangeSettingNum(const char *setting, double value)
 
 	if (strcmp(setting, "gain") == 0)
 	{
-		OutputGainFactor = 4.0f * value;
+		OutputGainFactor = 4.0f * static_cast<float>(value);
 	}
 }
 

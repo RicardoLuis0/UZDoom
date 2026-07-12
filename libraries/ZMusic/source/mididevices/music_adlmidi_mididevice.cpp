@@ -434,7 +434,7 @@ void ADLMIDIDevice::ChangeSettingNum(const char *setting, double value)
 
 	if (strcmp(setting, "gain") == 0)
 	{
-		ConfigGainFactor = value;
+		ConfigGainFactor = static_cast<float>(value);
 		initGain();
 	}
 }
