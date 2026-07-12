@@ -1069,7 +1069,7 @@ static FString ReadVerificationError(TArrayView<uint8_t> stream)
 	}
 
 	TMap<FString, FString> files = {};
-	for (size_t i = 0u; i < fileSystem.GetNumWads(); ++i)
+	for (int i = 0; i < fileSystem.GetNumWads(); ++i)
 	{
 		if (!fileSystem.IsOptionalResource(i))
 		{
