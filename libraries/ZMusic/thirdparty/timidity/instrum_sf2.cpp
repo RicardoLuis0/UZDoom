@@ -568,7 +568,7 @@ static void ParseGen(SFFile *sf2, timidity_file *f, uint32_t chunkid, uint32_t c
 	{
 		// Section 7.3, page 22:
 		//		the size of the PGEN sub-chunk in bytes will be equal to four
-		//		times the terminal preset’s wGenNdx plus four.
+		//		times the terminal presetâ€™s wGenNdx plus four.
 		if (numgens != sf2->PresetBags[sf2->NumPresetBags - 1].GenIndex + 1)
 		{
 			throw CBadForm();
@@ -624,7 +624,7 @@ static void ParseInst(SFFile *sf2, timidity_file *f, uint32_t chunkid, uint32_t 
 
 		// Section 7.6, page 25:
 		//		If the instrument bag indices are non-monotonic or if the terminal
-		//		instrument’s wInstBagNdx does not match the IBAG sub-chunk size, the
+		//		instrumentâ€™s wInstBagNdx does not match the IBAG sub-chunk size, the
 		//		file is structurally defective and should be rejected at load time.
 		if (inst != sf2->Instruments)
 		{
