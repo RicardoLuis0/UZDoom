@@ -61,17 +61,60 @@ struct SpritePositioningInfo
 
 };
 
+enum MaterialLayerTexture
+{
+	MLTEX_DETAILMAP,
+	MLTEX_GLOWMAP,
+	MLTEX_BRIGHTMAP,
+	MLTEX_NORMAL,
+	MLTEX_SPECULAR,
+	MLTEX_METALLIC,
+	MLTEX_ROUGHNESS,
+	MLTEX_AMBIENT_OCCLUSION,
+	MLTEX_COUNT,
+};
+
+inline constexpr const char * MaterialLayerTextureNames[MLTEX_COUNT] = {
+	"detailmap",
+	"glowmap",
+	"brightmap",
+	"normal",
+	"specular",
+	"metallic",
+	"roughness",
+	"ao",
+};
+
+inline constexpr const char * MaterialLayerTextureNiceNames[MLTEX_COUNT] = {
+	"Detail Map",
+	"Glowmap",
+	"Brightmap",
+	"Normal Map",
+	"Specular Map",
+	"Metallic Map",
+	"Roughness Map",
+	"Ambient Occlusion Map",
+};
+
 struct MaterialLayers
 {
-	float Glossiness;
-	float SpecularLevel;
-	FGameTexture* Brightmap;
-	FGameTexture* Normal;
-	FGameTexture* Specular;
-	FGameTexture* Metallic;
-	FGameTexture* Roughness;
-	FGameTexture* AmbientOcclusion;
+	float Glossiness = -1000;
+	float SpecularLevel = -1000;
+	FGameTexture* BaseTextures[MLTEX_COUNT];
 	FGameTexture* CustomShaderTextures[MAX_CUSTOM_HW_SHADER_TEXTURES];
+
+	MaterialLayers()
+	{
+		for(int i = 0; i < MLTEX_COUNT; i++)
+		{
+			BaseTextures[i] = nullptr;
+		}
+
+		for(int i = 0; i < MAX_CUSTOM_HW_SHADER_TEXTURES; i++)
+		{
+			CustomShaderTextures[i] = nullptr;
+		}
+	}
 };
 
 struct GlobalShaderDesc
@@ -140,18 +183,6 @@ enum EGameTexFlags
 	GTexf_NoMipmap = 4096,					// Disable mipmapping for this texture
 };
 
-struct FMaterialLayers
-{
-	RefCountedPtr<FTexture> Detailmap;
-	RefCountedPtr<FTexture> Glowmap;
-	RefCountedPtr<FTexture> Normal;							// Normal map texture
-	RefCountedPtr<FTexture> Specular;						// Specular light texture for the diffuse+normal+specular light model
-	RefCountedPtr<FTexture> Metallic;						// Metalness texture for the physically based rendering (PBR) light model
-	RefCountedPtr<FTexture> Roughness;						// Roughness texture for PBR
-	RefCountedPtr<FTexture> AmbientOcclusion;				// Ambient occlusion texture for PBR
-	RefCountedPtr<FTexture> CustomShaderTextures[MAX_CUSTOM_HW_SHADER_TEXTURES]; // Custom texture maps for custom hardware shaders
-};
-
 // Refactoring helper to allow piece by piece adjustment of the API
 class FGameTexture
 {
@@ -159,9 +190,9 @@ class FGameTexture
 	friend class GLDefsParser;	// this needs access to set up the texture properly
 
 	// Material layers. These are shared so reference counting is used.
-	RefCountedPtr<FTexture> Base;
-	RefCountedPtr<FTexture> Brightmap;
-	std::unique_ptr<FMaterialLayers> Layers;
+	RefCountedPtr<FTexture> DiffuseTexture;
+	RefCountedPtr<FTexture> BaseTextures[MLTEX_COUNT];
+	RefCountedPtr<FTexture> CustomShaderTextures[MAX_CUSTOM_HW_SHADER_TEXTURES];
 
 	FString Name;
 	FTextureID id;
@@ -193,7 +224,6 @@ class FGameTexture
 
 	int16_t SkyOffset = 0;
 	uint16_t Rotations = 0xffff;
-
 
 public:
 	float alphaThreshold = 0.5f;
@@ -227,9 +257,9 @@ public:
 	}
 	int GetUpscaleFlag() { return shouldUpscaleFlag & 1; }
 
-	FTexture* GetTexture() { return Base.get(); }
-	int GetSourceLump() const { return Base->GetSourceLump(); }
-	void SetBrightmap(FGameTexture* tex) { Brightmap = tex->GetTexture(); }
+	FTexture* GetTexture() { return DiffuseTexture.get(); }
+	int GetSourceLump() const { return DiffuseTexture->GetSourceLump(); }
+	void SetBrightmap(FGameTexture* tex) { BaseTextures[MLTEX_BRIGHTMAP] = tex->GetTexture(); }
 
 	int GetTexelLeftOffset(int adjusted = 0) const { return LeftOffset[adjusted]; }
 	int GetTexelTopOffset(int adjusted = 0) const { return TopOffset[adjusted]; }
@@ -253,11 +283,11 @@ public:
 	bool isValid() const { return UseType != ETextureType::Null; }
 	int isWarped() { return warped; }
 	void SetWarpStyle(int style) { warped = style; }
-	bool isMasked() { return Base->Masked; }
-	bool isHardwareCanvas() const { return Base->isHardwareCanvas(); }	// There's two here so that this can deal with software canvases in the hardware renderer later.
-	bool isSoftwareCanvas() const { return Base->isCanvas(); }
+	bool isMasked() { return DiffuseTexture->Masked; }
+	bool isHardwareCanvas() const { return DiffuseTexture->isHardwareCanvas(); }	// There's two here so that this can deal with software canvases in the hardware renderer later.
+	bool isSoftwareCanvas() const { return DiffuseTexture->isCanvas(); }
 
-	void SetTranslucent(bool on) { Base->bTranslucent = on; }
+	void SetTranslucent(bool on) { DiffuseTexture->bTranslucent = on; }
 	void SetUseType(ETextureType type) { UseType = type; }
 	int GetRotations() const { return Rotations; }
 	void SetRotations(int rot) { Rotations = int16_t(rot); }
@@ -294,34 +324,31 @@ public:
 		// Only update layers that have something defind.
 		if (lay.Glossiness > -1000) Glossiness = lay.Glossiness;
 		if (lay.SpecularLevel > -1000) SpecularLevel = lay.SpecularLevel;
-		if (lay.Brightmap) Brightmap = lay.Brightmap->GetTexture();
 
-		bool needlayers = (lay.Normal || lay.Specular || lay.Metallic || lay.Roughness || lay.AmbientOcclusion);
-		for (int i = 0; i < MAX_CUSTOM_HW_SHADER_TEXTURES && !needlayers; i++)
-		{
-			if (lay.CustomShaderTextures[i]) needlayers = true;
-		}
-		if (needlayers)
-		{
-			Layers = std::make_unique<FMaterialLayers>();
 
-			if (lay.Normal) Layers->Normal = lay.Normal->GetTexture();
-			if (lay.Specular) Layers->Specular = lay.Specular->GetTexture();
-			if (lay.Metallic) Layers->Metallic = lay.Metallic->GetTexture();
-			if (lay.Roughness) Layers->Roughness = lay.Roughness->GetTexture();
-			if (lay.AmbientOcclusion) Layers->AmbientOcclusion = lay.AmbientOcclusion->GetTexture();
-			for (int i = 0; i < MAX_CUSTOM_HW_SHADER_TEXTURES; i++)
+		for (int i = 0; i < MLTEX_COUNT; i++)
+		{
+			if (lay.BaseTextures[i])
 			{
-				if (lay.CustomShaderTextures[i]) Layers->CustomShaderTextures[i] = lay.CustomShaderTextures[i]->GetTexture();
+				BaseTextures[i] = lay.BaseTextures[i]->GetTexture();
+			}
+		}
+
+		for (int i = 0; i < MAX_CUSTOM_HW_SHADER_TEXTURES; i++)
+		{
+			if (lay.CustomShaderTextures[i])
+			{
+				CustomShaderTextures[i] = lay.CustomShaderTextures[i]->GetTexture();
 			}
 		}
 	}
+
 	float GetGlossiness() const { return Glossiness; }
 	float GetSpecularLevel() const { return SpecularLevel; }
 
 	void CopySize(FGameTexture* BaseTexture, bool forfont = false)
 	{
-		Base->CopySize(BaseTexture->Base.get());
+		DiffuseTexture->CopySize(BaseTexture->DiffuseTexture.get());
 		SetDisplaySize(BaseTexture->GetDisplayWidth(), BaseTexture->GetDisplayHeight());
 		if (!forfont || !(BaseTexture->flags & GTexf_OffsetsNotForFont))
 		{
@@ -340,13 +367,12 @@ public:
 	void SetFullbright() { flags |= GTexf_RenderFullbright;  }
 	void SetDisableFullbright(bool on) { if (on) flags |= GTexf_DisableFullbrightSprites; else flags &= ~GTexf_DisableFullbrightSprites; }
 	void SetGlowing(PalEntry color) { flags = (flags & ~GTexf_AutoGlowing) | GTexf_Glowing; GlowColor = color; }
-	void SetDisableBrightmap() { flags |= GTexf_BrightmapChecked; Brightmap = nullptr; }
 
 	bool isNoMipmap() const { return !!(flags & GTexf_NoMipmap); }
 	void SetNoMipmap(bool set) { if (set) flags |= GTexf_NoMipmap; else flags &= ~GTexf_NoMipmap; }
 
 	bool isUserContent() const;
-	int CheckRealHeight() { return RoundHalfUp(Base->CheckRealHeight() / ScaleY); }
+	int CheckRealHeight() { return RoundHalfUp(DiffuseTexture->CheckRealHeight() / ScaleY); }
 	void SetSize(int x, int y) 
 	{ 
 		TexelWidth = x; 
@@ -368,7 +394,7 @@ public:
 	}
 	void SetBase(FTexture* Tex)
 	{
-		Base = Tex;
+		DiffuseTexture = Tex;
 	}
 	void SetOffsets(int which, int x, int y)
 	{
@@ -395,7 +421,7 @@ public:
 
 	bool GetTranslucency()
 	{
-		return Base->GetTranslucency();
+		return DiffuseTexture->GetTranslucency();
 	}
 
 	int GetClampMode(int clampmode)
@@ -411,20 +437,19 @@ public:
 	void GetLayers(TArray<FTexture*>& layers)
 	{
 		layers.Clear();
-		for (auto tex : { Base.get(), Brightmap.get() })
+		if(DiffuseTexture.get())
 		{
-			if (tex != nullptr) layers.Push(tex);
+			layers.Push(DiffuseTexture.get());
 		}
-		if (Layers)
+
+		for(int i = 0; i < MLTEX_COUNT; i++)
 		{
-			for (auto tex : { Layers->Detailmap.get(), Layers->Glowmap.get(), Layers->Normal.get(), Layers->Specular.get(), Layers->Metallic.get(), Layers->Roughness.get(), Layers->AmbientOcclusion.get() })
-			{
-				if (tex != nullptr) layers.Push(tex);
-			}
-			for (auto& tex : Layers->CustomShaderTextures)
-			{
-				if (tex != nullptr) layers.Push(tex.get());
-			}
+			if(BaseTextures[i].get()) layers.Push(BaseTextures[i].get());
+		}
+
+		for(int i = 0; i < MAX_CUSTOM_HW_SHADER_TEXTURES; i++)
+		{
+			if(CustomShaderTextures[i].get()) layers.Push(CustomShaderTextures[i].get());
 		}
 	}
 
@@ -441,65 +466,55 @@ public:
 
 	FTexture* GetBrightmap()
 	{
-		if (Brightmap.get() || (flags & GTexf_BrightmapChecked)) return Brightmap.get();
+		if (BaseTextures[MLTEX_BRIGHTMAP].get() || (flags & GTexf_BrightmapChecked)) return BaseTextures[MLTEX_BRIGHTMAP].get();
 		CreateDefaultBrightmap();
-		return Brightmap.get();
+		return BaseTextures[MLTEX_BRIGHTMAP].get();
 	}
+
 	FTexture* GetGlowmap()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Glowmap.get();
+		return BaseTextures[MLTEX_GLOWMAP].get();
 	}
 	FTexture* GetDetailmap()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Detailmap.get();
+		return BaseTextures[MLTEX_DETAILMAP].get();
 	}
 	FTexture* GetNormalmap()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Normal.get();
+		return BaseTextures[MLTEX_NORMAL].get();
 	}
 	FTexture* GetSpecularmap()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Specular.get();
+		return BaseTextures[MLTEX_SPECULAR].get();
 	}
 	FTexture* GetMetallic()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Metallic.get();
+		return BaseTextures[MLTEX_METALLIC].get();
 	}
 	FTexture* GetRoughness()
 	{
-		if (!Layers) return nullptr;
-		return Layers->Roughness.get();
+		return BaseTextures[MLTEX_ROUGHNESS].get();
 	}
 	FTexture* GetAmbientOcclusion()
 	{
-		if (!Layers) return nullptr;
-		return Layers->AmbientOcclusion.get();
+		return BaseTextures[MLTEX_AMBIENT_OCCLUSION].get();
 	}
 
 	void SetGlowmap(FTexture *T)
 	{
-		if (!Layers) Layers = std::make_unique<FMaterialLayers>();
-		Layers->Glowmap = T;
+		BaseTextures[MLTEX_GLOWMAP] = T;
 	}
 	void SetDetailmap(FTexture* T)
 	{
-		if (!Layers) Layers = std::make_unique<FMaterialLayers>();
-		Layers->Detailmap = T;
+		BaseTextures[MLTEX_DETAILMAP] = T;
 	}
 	void SetNormalmap(FTexture* T)
 	{
-		if (!Layers) Layers = std::make_unique<FMaterialLayers>();
-		Layers->Normal = T;
+		BaseTextures[MLTEX_NORMAL] = T;
 	}
 	void SetSpecularmap(FTexture* T)
 	{
-		if (!Layers) Layers = std::make_unique<FMaterialLayers>();
-		Layers->Specular = T;
+		BaseTextures[MLTEX_SPECULAR] = T;
 	}
 
 };

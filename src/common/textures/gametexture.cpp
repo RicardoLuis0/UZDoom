@@ -56,13 +56,13 @@ FGameTexture::FGameTexture(FTexture* wrap, const char* name) : Name(name)
 
 void FGameTexture::Setup(FTexture *wrap)
 {
-	Base = wrap;
+	DiffuseTexture = wrap;
 	id.SetInvalid();
-	TexelWidth = Base->GetWidth();
+	TexelWidth = DiffuseTexture->GetWidth();
 	DisplayWidth = (float)TexelWidth;
-	TexelHeight = Base->GetHeight();
+	TexelHeight = DiffuseTexture->GetHeight();
 	DisplayHeight = (float)TexelHeight;
-	auto img = Base->GetImage();
+	auto img = DiffuseTexture->GetImage();
 	if (img)
 	{
 		auto ofs = img->GetOffsets();
@@ -86,7 +86,7 @@ void FGameTexture::Setup(FTexture *wrap)
 
 FGameTexture::~FGameTexture()
 {
-	if (Base != nullptr)
+	if (DiffuseTexture != nullptr)
 	{
 		FGameTexture* link = TexMan.GetLinkedTexture(GetSourceLump());
 		if (link == this) TexMan.SetLinkedTexture(GetSourceLump(), nullptr);
@@ -112,7 +112,7 @@ FGameTexture::~FGameTexture()
 
 bool FGameTexture::isUserContent() const
 {
-	int filenum = fileSystem.GetFileContainer(Base->GetSourceLump());
+	int filenum = fileSystem.GetFileContainer(DiffuseTexture->GetSourceLump());
 	return (filenum > fileSystem.GetMaxIwadNum());
 }
 
@@ -128,29 +128,20 @@ void FGameTexture::AddAutoMaterials()
 	struct AutoTextureSearchPath
 	{
 		const char* path;
-		RefCountedPtr<FTexture> FGameTexture::* pointer;
-	};
-	struct AutoTextureSearchPath2
-	{
-		const char* path;
-		RefCountedPtr<FTexture> FMaterialLayers::* pointer;
+		int index;
 	};
 
 	static AutoTextureSearchPath autosearchpaths[] =
 	{
-		{ "brightmaps/", &FGameTexture::Brightmap }, // For backwards compatibility, only for short names
-	{ "materials/brightmaps/", &FGameTexture::Brightmap },
-	};
-
-	static AutoTextureSearchPath2 autosearchpaths2[] =
-	{
-	{ "materials/detailmaps/", &FMaterialLayers::Detailmap },
-	{ "materials/glowmaps/", &FMaterialLayers::Glowmap },
-	{ "materials/normalmaps/", &FMaterialLayers::Normal },
-	{ "materials/specular/", &FMaterialLayers::Specular },
-	{ "materials/metallic/", &FMaterialLayers::Metallic },
-	{ "materials/roughness/", &FMaterialLayers::Roughness },
-	{ "materials/ao/", &FMaterialLayers::AmbientOcclusion }
+		{ "materials/detailmaps/", MLTEX_DETAILMAP },
+		{ "materials/glowmaps/", MLTEX_GLOWMAP },
+		{ "brightmaps/", MLTEX_BRIGHTMAP }, // For backwards compatibility, only for short names
+		{ "materials/brightmaps/", MLTEX_BRIGHTMAP },
+		{ "materials/normalmaps/", MLTEX_NORMAL },
+		{ "materials/specular/", MLTEX_SPECULAR },
+		{ "materials/metallic/", MLTEX_METALLIC },
+		{ "materials/roughness/", MLTEX_ROUGHNESS },
+		{ "materials/ao/", MLTEX_AMBIENT_OCCLUSION },
 	};
 
 	if (flags & GTexf_AutoMaterialsAdded) return; // do this only once
@@ -160,7 +151,7 @@ void FGameTexture::AddAutoMaterials()
 	for (size_t i = 0; i < countof(autosearchpaths); i++)
 	{
 		auto& layer = autosearchpaths[i];
-		if (this->*(layer.pointer) == nullptr)	// only if no explicit assignment had been done.
+		if (BaseTextures[layer.index] == nullptr)	// only if no explicit assignment had been done.
 		{
 			FStringf lookup("%s%s%s", layer.path, "auto/", searchname.GetChars());
 			auto lump = fileSystem.CheckNumForFullName(lookup.GetChars(), false, FileSys::ns_global, true);
@@ -173,33 +164,12 @@ void FGameTexture::AddAutoMaterials()
 				auto bmtex = TexMan.FindGameTexture(fileSystem.GetFileFullName(lump), ETextureType::Any, FTextureManager::TEXMAN_TryAny);
 				if (bmtex != nullptr)
 				{
-					this->*(layer.pointer) = bmtex->GetTexture();
+					BaseTextures[layer.index] = bmtex->GetTexture();
 				}
 			}
 		}
 	}
-	for (size_t i = 0; i < countof(autosearchpaths2); i++)
-	{
-		auto& layer = autosearchpaths2[i];
-		if (!this->Layers || this->Layers.get()->*(layer.pointer) == nullptr)	// only if no explicit assignment had been done.
-		{
-			FStringf lookup("%s%s%s", layer.path, "auto/", searchname.GetChars());
-			auto lump = fileSystem.CheckNumForFullName(lookup.GetChars(), false, FileSys::ns_global, true);
-			if (lump == -1)
-			{
-				lump = fileSystem.CheckNumForFullName(lookup.GetChars(), false, FileSys::ns_global, false);
-			}
-			if (lump != -1)
-			{
-				auto bmtex = TexMan.FindGameTexture(fileSystem.GetFileFullName(lump), ETextureType::Any, FTextureManager::TEXMAN_TryAny);
-				if (bmtex != nullptr)
-				{
-					if (this->Layers == nullptr) this->Layers = std::make_unique<FMaterialLayers>();
-					this->Layers.get()->* (layer.pointer) = bmtex->GetTexture();
-				}
-			}
-		}
-	}
+
 	flags |= GTexf_AutoMaterialsAdded;
 }
 
@@ -217,7 +187,7 @@ void FGameTexture::CreateDefaultBrightmap()
 		// Check for brightmaps
 		if (tex->GetImage() && tex->GetImage()->UseGamePalette() && GPalette.HasGlobalBrightmap &&
 			GetUseType() != ETextureType::Decal && GetUseType() != ETextureType::MiscPatch && GetUseType() != ETextureType::FontChar &&
-			Brightmap == nullptr)
+			BaseTextures[MLTEX_BRIGHTMAP] == nullptr)
 		{
 			// May have one - let's check when we use this texture
 			auto texbuf = tex->Get8BitPixels(false);
@@ -230,7 +200,7 @@ void FGameTexture::CreateDefaultBrightmap()
 				{
 					// Create a brightmap
 					DPrintf(DMSG_NOTIFY, "brightmap created for texture '%s'\n", GetName().GetChars());
-					Brightmap = CreateBrightmapTexture(tex->GetImage());
+					BaseTextures[MLTEX_BRIGHTMAP] = CreateBrightmapTexture(tex->GetImage());
 					return;
 				}
 			}
@@ -251,7 +221,7 @@ void FGameTexture::GetGlowColor(float* data)
 {
 	if (isGlowing() && GlowColor == 0)
 	{
-		auto buffer = Base->GetBgraBitmap(nullptr);
+		auto buffer = DiffuseTexture->GetBgraBitmap(nullptr);
 		GlowColor = averageColor((uint32_t*)buffer.GetPixels(), buffer.GetWidth() * buffer.GetHeight(), 153);
 
 		// Black glow equals nothing so switch glowing off
@@ -272,8 +242,8 @@ int FGameTexture::GetAreas(FloatRect** pAreas) const
 {
 	if (shaderindex == SHADER_Default)	// texture splitting can only be done if there's no attached effects
 	{
-		*pAreas = Base->areas;
-		return Base->areacount;
+		*pAreas = DiffuseTexture->areas;
+		return DiffuseTexture->areacount;
 	}
 	else
 	{
@@ -291,18 +261,20 @@ bool FGameTexture::ShouldExpandSprite()
 {
 	if (expandSprite != -1) return expandSprite;
 	// Only applicable to image textures with no shader effect.
-	if (GetShaderIndex() != SHADER_Default || !dynamic_cast<FImageTexture*>(Base.get()))
+	if (GetShaderIndex() != SHADER_Default || !dynamic_cast<FImageTexture*>(DiffuseTexture.get()))
 	{
 		expandSprite = false;
 		return false;
 	}
-	if (Brightmap != NULL && (Base->GetWidth() != Brightmap->GetWidth() || Base->GetHeight() != Brightmap->GetHeight()))
+	if (BaseTextures[MLTEX_BRIGHTMAP] != NULL &&
+		(DiffuseTexture->GetWidth() != BaseTextures[MLTEX_BRIGHTMAP]->GetWidth() || DiffuseTexture->GetHeight() != BaseTextures[MLTEX_BRIGHTMAP]->GetHeight()))
 	{
 		// do not expand if the brightmap's physical size differs from the base.
 		expandSprite = false;
 		return false;
 	}
-	if (Layers && Layers->Glowmap != NULL && (Base->GetWidth() != Layers->Glowmap->GetWidth() || Base->GetHeight() != Layers->Glowmap->GetHeight()))
+	if (BaseTextures[MLTEX_GLOWMAP] != NULL &&
+		(DiffuseTexture->GetWidth() != BaseTextures[MLTEX_GLOWMAP]->GetWidth() || DiffuseTexture->GetHeight() != BaseTextures[MLTEX_GLOWMAP]->GetHeight()))
 	{
 		// same restriction for the glow map
 		expandSprite = false;
@@ -333,7 +305,7 @@ void FGameTexture::SetupSpriteData()
 
 		if (i == 1 && ShouldExpandSprite())
 		{
-			spi.mTrimResult = Base->TrimBorders(spi.trim) && !GetNoTrimming();	// get the trim size before adding the empty frame
+			spi.mTrimResult = DiffuseTexture->TrimBorders(spi.trim) && !GetNoTrimming();	// get the trim size before adding the empty frame
 			spi.spriteWidth += 2;
 			spi.spriteHeight += 2;
 		}
@@ -411,7 +383,7 @@ void FGameTexture::SetSpriteRect()
 
 void FGameTexture::CleanHardwareData(bool full)
 {
-	if (full) Base->CleanHardwareTextures();
+	if (full) DiffuseTexture->CleanHardwareTextures();
 	for (auto mat : Material) if (mat) mat->DeleteDescriptors();
 }
 
