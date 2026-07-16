@@ -1387,7 +1387,7 @@ class GLDefsParser
 		TArray<int> texNameIndex;
 		float speed = 1.f;
 
-		MaterialLayers mlay = { -1000, -1000 };
+		MaterialLayers mlay;
 
 		#define GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES 6
 
@@ -1945,20 +1945,20 @@ class GLDefsParser
 
 		tex->SetNoMipmap(no_mipmap);
 
-		FGameTexture **bindings[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] =
+		int bindings[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] =
 		{
-			&mlay.Brightmap,
-			&mlay.Normal,
-			&mlay.Specular,
-			&mlay.Metallic,
-			&mlay.Roughness,
-			&mlay.AmbientOcclusion
+			MLTEX_BRIGHTMAP,
+			MLTEX_NORMAL,
+			MLTEX_SPECULAR,
+			MLTEX_METALLIC,
+			MLTEX_ROUGHNESS,
+			MLTEX_AMBIENT_OCCLUSION,
 		};
 		for (int i = 0; i < GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES; i++)
 		{
 			if (textures[i])
 			{
-				*bindings[i] = textures[i];
+				mlay.BaseTextures[bindings[i]] = textures[i];
 			}
 		}
 
@@ -1968,12 +1968,12 @@ class GLDefsParser
 		if (usershader.shader.IsNotEmpty())
 		{
 			int firstUserTexture;
-			if ((mlay.Normal || tex->GetNormalmap()) && (mlay.Specular || tex->GetSpecularmap()))
+			if ((mlay.BaseTextures[MLTEX_NORMAL] || tex->GetNormalmap()) && (mlay.BaseTextures[MLTEX_SPECULAR] || tex->GetSpecularmap()))
 			{
 				usershader.shaderType = SHADER_Specular;
 				firstUserTexture = 7;
 			}
-			else if ((mlay.Normal || tex->GetNormalmap()) && (mlay.Metallic || tex->GetMetallic()) && (mlay.Roughness || tex->GetRoughness()) && (mlay.AmbientOcclusion || tex->GetAmbientOcclusion()))
+			else if ((mlay.BaseTextures[MLTEX_NORMAL] || tex->GetNormalmap()) && (mlay.BaseTextures[MLTEX_METALLIC] || tex->GetMetallic()) && (mlay.BaseTextures[MLTEX_ROUGHNESS] || tex->GetRoughness()) && (mlay.BaseTextures[MLTEX_AMBIENT_OCCLUSION] || tex->GetAmbientOcclusion()))
 			{
 				usershader.shaderType = SHADER_PBR;
 				firstUserTexture = 9;
@@ -2294,7 +2294,7 @@ class GLDefsParser
 			FTextureID no = TexMan.CheckForTexture(sc.String, type);
 			auto tex = TexMan.GetGameTexture(no);
 			if (tex) tex->AddAutoMaterials();
-			MaterialLayers mlay = { -1000, -1000 };
+			MaterialLayers mlay;
 
 			sc.MustGetToken('{');
 			while (!sc.CheckToken('}'))

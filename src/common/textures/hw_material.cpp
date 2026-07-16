@@ -73,47 +73,48 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 			mShaderIndex = tx->isWarped(); // This picks SHADER_Warp1 or SHADER_Warp2
 		}
 		// Note that the material takes no ownership of the texture!
-		else if (tx->Layers && tx->Layers->Normal.get() && tx->Layers->Specular.get())
+		else if (tx->BaseTextures[MLTEX_NORMAL].get() && tx->BaseTextures[MLTEX_SPECULAR].get())
 		{
-			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Specular.get() })
-			{
-				mTextureLayers.Push({ texture, 0 });
-			}
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_NORMAL].get(), 0 });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_SPECULAR].get(), 0 });
 			mShaderIndex = SHADER_Specular;
 		}
-		else if (tx->Layers && tx->Layers->Normal.get() && tx->Layers->Metallic.get() && tx->Layers->Roughness.get() && tx->Layers->AmbientOcclusion.get())
+		else if (tx->BaseTextures[MLTEX_NORMAL].get()
+			&& tx->BaseTextures[MLTEX_METALLIC].get()
+			&& tx->BaseTextures[MLTEX_ROUGHNESS].get()
+			&& tx->BaseTextures[MLTEX_AMBIENT_OCCLUSION].get())
 		{
-			for (auto &texture : { tx->Layers->Normal.get(), tx->Layers->Metallic.get(), tx->Layers->Roughness.get(), tx->Layers->AmbientOcclusion.get() })
-			{
-				mTextureLayers.Push({ texture, 0 });
-			}
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_NORMAL].get(), 0 });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_METALLIC].get(), 0 });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_ROUGHNESS].get(), 0 });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_AMBIENT_OCCLUSION].get(), 0 });
 			mShaderIndex = SHADER_PBR;
 		}
 
 		// Note that these layers must present a valid texture even if not used, because empty TMUs in the shader are an undefined condition.
 		tx->CreateDefaultBrightmap();
 		auto placeholder = TexMan.GameByIndex(1);
-		if (tx->Brightmap.get())
+		if (tx->BaseTextures[MLTEX_BRIGHTMAP].get())
 		{
-			mTextureLayers.Push({ tx->Brightmap.get(), scaleflags });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_BRIGHTMAP].get(), scaleflags });
 			mLayerFlags |= TEXF_Brightmap;
 		}
 		else
 		{
 			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
-		if (tx->Layers && tx->Layers->Detailmap.get())
+		if (tx->BaseTextures[MLTEX_DETAILMAP].get())
 		{
-			mTextureLayers.Push({ tx->Layers->Detailmap.get(), 0 });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_DETAILMAP].get(), 0 });
 			mLayerFlags |= TEXF_Detailmap;
 		}
 		else
 		{
 			mTextureLayers.Push({ placeholder->GetTexture(), 0 });
 		}
-		if (tx->Layers && tx->Layers->Glowmap.get())
+		if (tx->BaseTextures[MLTEX_GLOWMAP].get())
 		{
-			mTextureLayers.Push({ tx->Layers->Glowmap.get(), scaleflags });
+			mTextureLayers.Push({ tx->BaseTextures[MLTEX_GLOWMAP].get(), scaleflags });
 			mLayerFlags |= TEXF_Glowmap;
 		}
 		else
@@ -133,13 +134,10 @@ FMaterial::FMaterial(FGameTexture * tx, int scaleflags)
 			{
 				if (index >= FIRST_USER_SHADER && usershaders[index - FIRST_USER_SHADER].shaderType == mShaderIndex)
 				{ // Only apply user shader if it matches the expected material
-					if (tx->Layers)
+					for (auto& texture : tx->CustomShaderTextures)
 					{
-						for (auto& texture : tx->Layers->CustomShaderTextures)
-						{
-							if (texture == nullptr) continue;
-							mTextureLayers.Push({ texture.get(), 0 });	// scalability should be user-definable.
-						}
+						if (texture == nullptr) continue;
+						mTextureLayers.Push({ texture.get(), 0 });	// scalability should be user-definable.
 					}
 					mShaderIndex = index;
 				}

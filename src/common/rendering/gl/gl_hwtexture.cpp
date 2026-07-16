@@ -39,13 +39,13 @@ namespace OpenGLRenderer
 
 
 TexFilter_s TexFilter[] = {
-	{GL_NEAREST,					GL_NEAREST,		false},
-	{GL_NEAREST_MIPMAP_NEAREST,		GL_NEAREST,		true},
-	{GL_LINEAR,						GL_LINEAR,		false},
-	{GL_LINEAR_MIPMAP_NEAREST,		GL_LINEAR,		true},
-	{GL_LINEAR_MIPMAP_LINEAR,		GL_LINEAR,		true},
-	{GL_NEAREST_MIPMAP_LINEAR,		GL_NEAREST,		true},
-	{GL_LINEAR_MIPMAP_LINEAR,		GL_NEAREST,		true},
+	{GL_NEAREST,					GL_NEAREST,		false}, // "None"
+	{GL_NEAREST_MIPMAP_NEAREST,		GL_NEAREST,		true}, // "None (nearest mipmap)"
+	{GL_LINEAR,						GL_LINEAR,		false}, // "Linear"
+	{GL_LINEAR_MIPMAP_NEAREST,		GL_LINEAR,		true}, // "Bilinear"
+	{GL_LINEAR_MIPMAP_LINEAR,		GL_LINEAR,		true}, // "Trilinear"
+	{GL_NEAREST_MIPMAP_LINEAR,		GL_NEAREST,		true}, // "None (linear mipmap)"
+	{GL_LINEAR_MIPMAP_LINEAR,		GL_NEAREST,		true}, // "None (trilinear)"
 };
 
 //===========================================================================
