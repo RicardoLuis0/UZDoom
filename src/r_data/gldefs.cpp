@@ -1389,11 +1389,7 @@ class GLDefsParser
 
 		MaterialLayers mlay;
 
-		#define GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES 6
-
-		FGameTexture* textures[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] = {};
-		const char *keywords[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] = { "brightmap", "normal", "specular", "metallic", "roughness", "ao" };
-		const char *notFound[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] = { "Brightmap", "Normalmap", "Specular texture", "Metallic texture", "Roughness texture", "Ambient occlusion texture" };
+		FGameTexture* textures[MLTEX_COUNT] = {};
 
 		FGameTexture* tex = nullptr;
 
@@ -1675,9 +1671,9 @@ class GLDefsParser
 			{
 				bool isProperty = false;
 
-				if(!is_globalshader) for (int i = 0; i < GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES; i++)
+				if(!is_globalshader) for (int i = 0; i < MLTEX_COUNT; i++)
 				{
-					if (sc.Compare (keywords[i]))
+					if (sc.Compare (MaterialLayerTextureNames[i]))
 					{
 						isProperty = true;
 						sc.MustGetString();
@@ -1685,11 +1681,11 @@ class GLDefsParser
 						{
 							if(gl_strict_gldefs_errors)
 							{
-								sc.ScriptError("Multiple %s definitions in %s\n", keywords[i], currentName.GetChars());
+								sc.ScriptError("Multiple %s definitions in %s\n", MaterialLayerTextureNiceNames[i], currentName.GetChars());
 							}
 							else
 							{
-								sc.ScriptMessage("Multiple %s definitions in %s\n", keywords[i], currentName.GetChars());
+								sc.ScriptMessage("Multiple %s definitions in %s\n", MaterialLayerTextureNiceNames[i], currentName.GetChars());
 							}
 						}
 						textures[i] = TexMan.FindGameTexture(sc.String, ETextureType::Any, FTextureManager::TEXMAN_TryAny);
@@ -1697,11 +1693,11 @@ class GLDefsParser
 						{
 							if(gl_strict_gldefs_errors)
 							{
-								sc.ScriptError("%s '%s' not found in %s\n", notFound[i], sc.String, currentName.GetChars());
+								sc.ScriptError("%s '%s' not found in %s\n", MaterialLayerTextureNiceNames[i], sc.String, currentName.GetChars());
 							}
 							else
 							{
-								sc.ScriptMessage("%s '%s' not found in %s\n", notFound[i], sc.String, currentName.GetChars());
+								sc.ScriptMessage("%s '%s' not found in %s\n", MaterialLayerTextureNiceNames[i], sc.String, currentName.GetChars());
 							}
 						}
 						break;
@@ -1945,20 +1941,11 @@ class GLDefsParser
 
 		tex->SetNoMipmap(no_mipmap);
 
-		int bindings[GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES] =
-		{
-			MLTEX_BRIGHTMAP,
-			MLTEX_NORMAL,
-			MLTEX_SPECULAR,
-			MLTEX_METALLIC,
-			MLTEX_ROUGHNESS,
-			MLTEX_AMBIENT_OCCLUSION,
-		};
-		for (int i = 0; i < GLDEFS_MATERIAL_NUM_TEXURE_PROPERTIES; i++)
+		for (int i = 0; i < MLTEX_COUNT; i++)
 		{
 			if (textures[i])
 			{
-				mlay.BaseTextures[bindings[i]] = textures[i];
+				mlay.BaseTextures[i] = textures[i];
 			}
 		}
 
