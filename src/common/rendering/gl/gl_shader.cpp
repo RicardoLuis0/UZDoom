@@ -293,7 +293,7 @@ FString ProcessShaderError(const char * shaderError, TArray<FString> &filenames_
 	return err;
 }
 
-bool FShader::Load(const char * name, const char * vert_prog_lump, const char * frag_prog_lump, const char * proc_prog_lump, const char * light_fragprog, const char * defines)
+bool FShader::Load(const char * name, const char * vert_prog_lump, const char * frag_prog_lump, const char * proc_prog_lump, const char * light_fragprog, const char * defines, const char * vert_prog_lump_user, bool isGBuffer, AllShaderIndex type, const TArray<VaryingFieldDesc> *varyings)
 {
 	FString error;
 
@@ -469,33 +469,40 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 //
 // The following code uses GetChars on the strings to get rid of terminating 0 characters. Do not remove or the code may break!
 //
-	FString vp_comb;
+	FString pre_placeholder;
 
 	assert(screen->mLights != NULL);
 	assert(screen->mBones != NULL);
 
 
 	if ((gl.flags & RFL_SHADER_STORAGE_BUFFER) && screen->allowSSBO())
-		vp_comb << "#version 430 core\n#define SUPPORTS_SHADOWMAPS\n";
+		pre_placeholder << "#version 430 core\n#define SUPPORTS_SHADOWMAPS\n";
 	else
-		vp_comb << "#version 330 core\n";
+		pre_placeholder << "#version 330 core\n";
 
 	bool lightbuffertype = screen->mLights->GetBufferType();
 	if (!lightbuffertype)
-		vp_comb.AppendFormat("#define NUM_UBO_LIGHTS %d\n#define NUM_UBO_BONES %d\n", screen->mLights->GetBlockSize(), screen->mBones->GetBlockSize());
+		pre_placeholder.AppendFormat("#define NUM_UBO_LIGHTS %d\n#define NUM_UBO_BONES %d\n", screen->mLights->GetBlockSize(), screen->mBones->GetBlockSize());
 	else
-		vp_comb << "#define SHADER_STORAGE_LIGHTS\n#define SHADER_STORAGE_BONES\n";
+		pre_placeholder << "#define SHADER_STORAGE_LIGHTS\n#define SHADER_STORAGE_BONES\n";
 
-	FString pre_placeholder = vp_comb;
-	vp_comb << defines << i_data.GetChars();
+	if(isGBuffer)
+	{
+		pre_placeholder << "\n#define GBUFFER_PASS\n";
+	}
+
+	FString vp_comb = defines;
+	vp_comb << i_data.GetChars();
+	vp_comb << ShaderInputsOutputs::GenerateInputsOutputs(false, false, type, false, true, varyings);
 	FString fp_comb = defines;
 	fp_comb << i_data.GetChars();
+	fp_comb << ShaderInputsOutputs::GenerateInputsOutputs(false, true, type, isGBuffer, true, varyings);
 
 	vp_comb << "#line 1\n";
 	fp_comb << "#line 1\n";
 
-	vp_comb << RemoveLayoutLocationDecl(GetStringFromLump(vp_lump), "out").GetChars() << "\n";
-	fp_comb << RemoveLayoutLocationDecl(GetStringFromLump(fp_lump), "in").GetChars() << "\n";
+	vp_comb << GetStringFromLump(vp_lump).GetChars() << "\n";
+	fp_comb << GetStringFromLump(fp_lump).GetChars() << "\n";
 	FString placeholder = "\n";
 	TArray<FString> filenames_for_error;
 
@@ -587,8 +594,29 @@ bool FShader::Load(const char * name, const char * vert_prog_lump, const char * 
 			fp_comb << proc_prog_lump + 1;
 		}
 	}
-
 	fp_comb = pre_placeholder + placeholder + fp_comb;
+
+	placeholder = "\n";
+	if (vert_prog_lump_user != NULL)
+	{
+		FString lump_filename(vert_prog_lump_user);
+		vp_comb << "#line 1\n";
+		int vp_lump = fileSystem.CheckNumForFullName(vert_prog_lump_user);
+		if (vp_lump == -1)
+		{
+			I_Error("Unable to load '%s'", vert_prog_lump_user);
+		}
+		else
+		{
+			placeholder << "#define VERT_CUSTOM_V0\n"; //V0 of custom vert shaders, vert shaders might change in the future, but these should stay supported
+			FString vp_data = stb_include_string(GetStringFromLump(vp_lump), lump_filename, filenames_for_error, error);
+
+			vp_comb << "\n" << vp_data;
+		}
+	}
+	vp_comb = pre_placeholder + placeholder + vp_comb;
+
+
 
 	if (light_fragprog)
 	{
@@ -824,19 +852,18 @@ bool FShader::Bind()
 //
 //==========================================================================
 
-FShader *FShaderCollection::Compile (const char *ShaderName, const char *ShaderPath, const char *LightModePath, const char *shaderdefines, bool usediscard, EPassType passType)
+FShader *FShaderCollection::Compile (const char *ShaderName, const char *ShaderPath, const char * VertShaderPath, const char *LightModePath, const char *shaderdefines, bool usediscard, EPassType passType, AllShaderIndex type, const TArray<VaryingFieldDesc> *varyings)
 {
 	FString defines;
 	if (shaderdefines) defines += shaderdefines;
 	// this can't be in the shader code due to ATI strangeness.
 	if (!usediscard) defines += "#define NO_ALPHATEST\n";
-	if (passType == GBUFFER_PASS) defines += "#define GBUFFER_PASS\n";
 
 	FShader *shader = NULL;
 	try
 	{
 		shader = new FShader(ShaderName);
-		if (!shader->Load(ShaderName, "shaders/glsl/main.vp", "shaders/glsl/main.fp", ShaderPath, LightModePath, defines.GetChars()))
+		if (!shader->Load(ShaderName, "shaders/glsl/main.vp", "shaders/glsl/main.fp", ShaderPath, LightModePath, defines.GetChars(), VertShaderPath, (passType == GBUFFER_PASS), type, varyings))
 		{
 			I_FatalError("Unable to load shader %s\n", ShaderName);
 		}
@@ -955,8 +982,8 @@ bool FShaderCollection::CompileNextShader()
 {
 	int i = mCompileIndex;
 	if (mCompileState == 0)
-	{
-		FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, true, mPassType);
+	{ // regular shaders
+		FShader *shc = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, nullptr, defaultshaders[i].lightfunc, defaultshaders[i].Defines, true, mPassType, static_cast<AllShaderIndex>(i), nullptr);
 		mMaterialShaders.Push(shc);
 		mCompileIndex++;
 		if (defaultshaders[mCompileIndex].ShaderName == nullptr)
@@ -967,8 +994,8 @@ bool FShaderCollection::CompileNextShader()
 		}
 	}
 	else if (mCompileState == 1)
-	{
-		FShader *shc1 = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, mPassType);
+	{ // noalphatest shaders
+		FShader *shc1 = Compile(defaultshaders[i].ShaderName, defaultshaders[i].gettexelfunc, nullptr, defaultshaders[i].lightfunc, defaultshaders[i].Defines, false, mPassType, static_cast<AllShaderIndex>(i), nullptr);
 		mMaterialShadersNAT.Push(shc1);
 		mCompileIndex++;
 		if (mCompileIndex >= SHADER_NoTexture)
@@ -979,10 +1006,11 @@ bool FShaderCollection::CompileNextShader()
 		}
 	}
 	else if (mCompileState == 2)
-	{
-		FString name = ExtractFileBase(usershaders[i].shader.GetChars());
-		FString defines = defaultshaders[usershaders[i].shaderType].Defines + usershaders[i].defines;
-		FShader *shc = Compile(name.GetChars(), usershaders[i].shader.GetChars(), defaultshaders[usershaders[i].shaderType].lightfunc, defines.GetChars(), true, mPassType);
+	{ // user shaders
+		auto &shader = usershaders[i];
+		FString name = ExtractFileBase(shader.shader.GetChars());
+		FString defines = defaultshaders[shader.shaderType].Defines + shader.defines;
+		FShader *shc = Compile(name.GetChars(), shader.shader.GetChars(), shader.vertshader.IsNotEmpty() ? shader.vertshader.GetChars() : nullptr, defaultshaders[shader.shaderType].lightfunc, defines.GetChars(), true, mPassType, static_cast<AllShaderIndex>(shader.shaderType), shader.vertshader.IsNotEmpty() && shader.varyings.Size() > 0 ? &shader.varyings : nullptr);
 		mMaterialShaders.Push(shc);
 		mCompileIndex++;
 		if (mCompileIndex >= (int)usershaders.Size())
@@ -992,10 +1020,10 @@ bool FShaderCollection::CompileNextShader()
 		}
 	}
 	else if (mCompileState == 3)
-	{
+	{ // effect shaders
 		FShader *eff = new FShader(effectshaders[i].ShaderName);
 		if (!eff->Load(effectshaders[i].ShaderName, effectshaders[i].vp, effectshaders[i].fp1,
-						effectshaders[i].fp2, effectshaders[i].fp3, effectshaders[i].defines))
+						effectshaders[i].fp2, effectshaders[i].fp3, effectshaders[i].defines, nullptr, (mPassType == GBUFFER_PASS), static_cast<AllShaderIndex>(i + FIRST_EFFECT_SHADER), nullptr))
 		{
 			delete eff;
 		}
