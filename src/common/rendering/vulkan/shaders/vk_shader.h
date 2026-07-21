@@ -30,6 +30,7 @@
 #include "hw_renderstate.h"
 #include "zvulkan/vulkanbuilders.h"
 #include <list>
+#include "shaderuniforms.h"
 
 #define SHADER_MIN_REQUIRED_TEXTURE_LAYERS 11
 
@@ -104,8 +105,8 @@ public:
 	void RemoveVkPPShader(VkPPShader* shader);
 
 private:
-	std::unique_ptr<VulkanShader> LoadVertShader(FString shadername, const char *vert_lump, const char *defines);
-	std::unique_ptr<VulkanShader> LoadFragShader(FString shadername, const char *frag_lump, const char *material_lump, const char *light_lump, const char *defines, bool alphatest, bool gbufferpass);
+	std::unique_ptr<VulkanShader> LoadVertShader(FString shadername, const char *vert_lump, const char *defines, const char * user_vert_lump, AllShaderIndex type, const TArray<VaryingFieldDesc> *varyings);
+	std::unique_ptr<VulkanShader> LoadFragShader(FString shadername, const char *frag_lump, const char *material_lump, const char *light_lump, const char *defines, bool alphatest, bool gbufferpass, AllShaderIndex type, const TArray<VaryingFieldDesc> *varyings);
 
 	FString GetTargetGlslVersion();
 	FString LoadPublicShaderLump(const char *lumpname);
