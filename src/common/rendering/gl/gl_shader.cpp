@@ -1165,31 +1165,17 @@ ADD_STAT(vram)
 			int largest_aux_block = -1;
 		};
 
-		gpu_memory_info_t vbo_free_memory;
 		gpu_memory_info_t texture_free_memory;
-		gpu_memory_info_t renderbuffer_free_memory;
 
-		glGetIntegerv(VBO_FREE_MEMORY_ATI, &vbo_free_memory.total_free);
 		glGetIntegerv(TEXTURE_FREE_MEMORY_ATI, &texture_free_memory.total_free);
-		glGetIntegerv(RENDERBUFFER_FREE_MEMORY_ATI, &renderbuffer_free_memory.total_free);
 
 		if(texture_free_memory.total_free > 0) // has ATI_meminfo
 		{
-			tmp.AppendFormat("VBO memory:\n");
-			tmp.AppendFormat("    Total Free: %s\n", FormatKB(vbo_free_memory.total_free).GetChars());
-			tmp.AppendFormat("    Largest Free Block: %s\n", FormatKB(vbo_free_memory.largest_block).GetChars());
-			tmp.AppendFormat("    Total Aux. Free: %s\n", FormatKB(vbo_free_memory.total_aux_free).GetChars());
-			tmp.AppendFormat("    Largest Free Aux. Block: %s\n", FormatKB(vbo_free_memory.largest_aux_block).GetChars());
-			tmp.AppendFormat("Texture memory:\n");
+			tmp.AppendFormat("VRAM:\n");
 			tmp.AppendFormat("    Total Free: %s\n", FormatKB(texture_free_memory.total_free).GetChars());
 			tmp.AppendFormat("    Largest Free Block: %s\n", FormatKB(texture_free_memory.largest_block).GetChars());
 			tmp.AppendFormat("    Total Aux. Free: %s\n", FormatKB(texture_free_memory.total_aux_free).GetChars());
 			tmp.AppendFormat("    Largest Free Aux. Block: %s\n", FormatKB(texture_free_memory.largest_aux_block).GetChars());
-			tmp.AppendFormat("Render Buffer memory:\n");
-			tmp.AppendFormat("    Total Free: %s\n", FormatKB(renderbuffer_free_memory.total_free).GetChars());
-			tmp.AppendFormat("    Largest Free Block: %s\n", FormatKB(renderbuffer_free_memory.largest_block).GetChars());
-			tmp.AppendFormat("    Total Aux. Free: %s\n", FormatKB(renderbuffer_free_memory.total_aux_free).GetChars());
-			tmp.AppendFormat("    Largest Free Aux. Block: %s\n", FormatKB(renderbuffer_free_memory.largest_aux_block).GetChars());
 
 		}
 		else
