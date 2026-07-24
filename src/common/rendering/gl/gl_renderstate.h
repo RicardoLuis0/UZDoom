@@ -60,6 +60,7 @@ class FGLRenderState final : public FRenderState
 	int lastClamp = 0;
 	int lastTranslation = 0;
 	int maxBoundMaterial = -1;
+	GlobalShaderAddr lastGlobalShaderAddr = {0, 3, 0};
 	size_t mLastMappedLightIndex = SIZE_MAX;
 	size_t mLastMappedBoneIndexBase = SIZE_MAX;
 
@@ -82,7 +83,7 @@ public:
 		lastMaterial = nullptr;
 	}
 
-	void ApplyMaterial(FMaterial *mat, int clampmode, int translation, int overrideshader);
+	void ApplyMaterial();
 
 	void Apply();
 	void ApplyBuffers();
