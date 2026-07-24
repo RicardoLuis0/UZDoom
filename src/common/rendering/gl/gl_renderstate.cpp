@@ -29,6 +29,7 @@
 #include "gl_buffers.h"
 #include "hw_clock.h"
 #include "hwrenderer/data/hw_viewpointbuffer.h"
+#include "texturemanager.h"
 
 namespace OpenGLRenderer
 {
@@ -252,7 +253,7 @@ void FGLRenderState::ApplyState()
 
 	if (mMaterial.mChanged)
 	{
-		ApplyMaterial(mMaterial.mMaterial, mMaterial.mClampMode, mMaterial.mTranslation, mMaterial.mOverrideShader);
+		ApplyMaterial();
 		mMaterial.mChanged = false;
 	}
 
@@ -301,9 +302,9 @@ void FGLRenderState::Apply()
 //
 //===========================================================================
 
-void FGLRenderState::ApplyMaterial(FMaterial *mat, int clampmode, int translation, int overrideshader)
+void FGLRenderState::ApplyMaterial()
 {
-	if (mat->Source()->isHardwareCanvas() && !mat->Source()->GetTranslucency())
+	if (mMaterial.mMaterial->Source()->isHardwareCanvas() && !mMaterial.mMaterial->Source()->GetTranslucency())
 	{
 		mTempTM = TM_OPAQUE;
 	}
@@ -311,46 +312,79 @@ void FGLRenderState::ApplyMaterial(FMaterial *mat, int clampmode, int translatio
 	{
 		mTempTM = TM_NORMAL;
 	}
-	auto tex = mat->Source();
-	mEffectState = overrideshader >= 0 ? overrideshader : mat->GetShaderIndex();
+	auto tex = mMaterial.mMaterial->Source();
+	mEffectState = mMaterial.mOverrideShader >= 0 ? mMaterial.mOverrideShader : mMaterial.mMaterial->GetShaderIndex();
 	mShaderTimer = tex->GetShaderSpeed();
 	SetSpecular(tex->GetGlossiness(), tex->GetSpecularLevel());
 	if (tex->isHardwareCanvas()) static_cast<FCanvasTexture*>(tex->GetTexture())->NeedUpdate();
 
-	clampmode = tex->GetClampMode(clampmode);
+	int clampmode = tex->GetClampMode(mMaterial.mClampMode);
 
 	// avoid rebinding the same texture multiple times.
-	if (mat == lastMaterial && lastClamp == clampmode && translation == lastTranslation) return;
-	lastMaterial = mat;
+	if (mMaterial.mMaterial == lastMaterial && lastClamp == clampmode && mMaterial.mTranslation == lastTranslation && mMaterial.globalShaderAddr == lastGlobalShaderAddr) return;
+	lastMaterial = mMaterial.mMaterial;
 	lastClamp = clampmode;
-	lastTranslation = translation;
+	lastTranslation = mMaterial.mTranslation;
+	lastGlobalShaderAddr = mMaterial.globalShaderAddr;
+
+
+	const GlobalShaderDesc& globalshader = *GetGlobalShader(mMaterial.globalShaderAddr);
+	int numLayersMat = globalshader ? mMaterial.mMaterial->NumNonUserLayers() : mMaterial.mMaterial->NumLayers();
+	int numLayers = globalshader ? (mMaterial.mMaterial->NumNonUserLayers() + globalshader.CountTextures())  : mMaterial.mMaterial->NumLayers();
 
 	int maxbound = 0;
 
-	int numLayers = mat->NumLayers();
 	MaterialLayerInfo* layer;
-	auto base = static_cast<FHardwareTexture*>(mat->GetLayer(0, translation, &layer));
+	auto base = static_cast<FHardwareTexture*>(mMaterial.mMaterial->GetLayer(0, mMaterial.mTranslation, &layer));
 
-	if (base->BindOrCreate(tex->GetTexture(), 0, clampmode, translation, layer->scaleFlags))
+	auto placeholder = TexMan.GetPlaceholderTexture()->GetTexture();
+
+	if (base->BindOrCreate(tex->GetTexture(), 0, clampmode, mMaterial.mTranslation, layer->scaleFlags))
 	{
 		if (!(layer->scaleFlags & CTF_Indexed))
 		{
-			for (int i = 1; i < numLayers; i++)
+			for (int i = 1; i < numLayersMat; i++)
 			{
-				auto systex = static_cast<FHardwareTexture*>(mat->GetLayer(i, 0, &layer));
+				auto systex = static_cast<FHardwareTexture*>(mMaterial.mMaterial->GetLayer(i, 0, &layer));
 				// fixme: Upscale flags must be disabled for certain layers.
 				systex->BindOrCreate(layer->layerTexture, i, clampmode, 0, layer->scaleFlags);
 				maxbound = i;
+			}
+
+			numLayers = numLayersMat;
+
+			if(globalshader)
+			{
+				size_t i = 0;
+				for (auto& texture : globalshader.CustomShaderTextures)
+				{
+					if (texture != nullptr)
+					{
+						auto systex = static_cast<FHardwareTexture*>(texture->GetHardwareTexture(0, 0));
+						systex->BindOrCreate(texture.get(), i, 0, 0, 0);
+					}
+					else
+					{
+						auto systex = static_cast<FHardwareTexture*>(placeholder->GetHardwareTexture(0, 0));
+						systex->BindOrCreate(placeholder, i, 0, 0, 0);
+					}
+					maxbound = i;
+					i++;
+					numLayers++;
+				}
 			}
 		}
 		else
 		{
 			for (int i = 1; i < 3; i++)
 			{
-				auto systex = static_cast<FHardwareTexture*>(mat->GetLayer(i, translation, &layer));
+				auto systex = static_cast<FHardwareTexture*>(mMaterial.mMaterial->GetLayer(i, mMaterial.mTranslation, &layer));
 				systex->Bind(i, false);
 				maxbound = i;
 			}
+
+			numLayersMat = 3;
+			numLayers = 3;
 		}
 	}
 	// unbind everything from the last texture that's still active
