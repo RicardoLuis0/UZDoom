@@ -378,7 +378,7 @@ VulkanDescriptorSet* VkMaterial::GetDescriptorSet(const FMaterialState& state)
 			{
 				if (texture != nullptr)
 				{
-					VkHardwareTexture *tex = static_cast<VkHardwareTexture*>(texture.get()->GetHardwareTexture(0, 0));
+					VkHardwareTexture *tex = static_cast<VkHardwareTexture*>(texture->GetHardwareTexture(0, 0));
 					VkTextureImage *img = tex->GetImage(texture.get(), 0, 0);
 					update.AddCombinedImageSampler(descriptor.get(), numLayers, img->View.get(), sampler, img->Layout);
 				}
