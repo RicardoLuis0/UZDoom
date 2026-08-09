@@ -29,6 +29,7 @@
 #include "engineerrors.h"
 #include "version.h"
 #include "cmdlib.h"
+#include "hw_viewpointuniforms.h"
 
 ShaderIncludeResult VkShaderManager::OnInclude(FString headerName, FString includerName, size_t depth)
 {
@@ -203,28 +204,6 @@ static const char *shaderBindings = R"(
 	layout(set = 0, binding = 2) uniform accelerationStructureEXT TopLevelAS;
 	#endif
 
-	// This must match the HWViewpointUniforms struct
-	layout(set = 1, binding = 0, std140) uniform readonly ViewpointUBO {
-		mat4 ProjectionMatrix;
-		mat4 ViewMatrix;
-		mat4 NormalViewMatrix;
-
-		vec4 uCameraPos;
-		vec4 uClipLine;
-
-		float uGlobVis;			// uGlobVis = R_GetGlobVis(r_visibility) / 32.0
-		int uPalLightLevels;
-		int uViewHeight;		// Software fuzz scaling
-		float uClipHeight;
-		float uClipHeightDirection;
-		int uShadowmapFilter;
-
-		int uLightBlendMode;
-
-		float uThickFogDistance;
-		float uThickFogMultiplier;
-	};
-
 	layout(set = 1, binding = 1, std140) uniform readonly MatricesUBO {
 		mat4 ModelMatrix;
 		mat4 NormalModelMatrix;
@@ -397,6 +376,7 @@ std::unique_ptr<VulkanShader> VkShaderManager::LoadVertShader(FString shadername
 		code << "#define VERT_CUSTOM_V0\n";
 	}
 	code << shaderBindings;
+	code << "layout(set = 1, binding = 0, std140) uniform readonly ViewpointUBO" << ShaderInputsOutputs::GenerateStruct<HWViewpointUniforms>() << ";\n";
 	code << ShaderInputsOutputs::GenerateInputsOutputs(true, false, type, false, fb->device->EnabledFeatures.Features.shaderClipDistance, varyings);
 	if (!fb->device->EnabledFeatures.Features.shaderClipDistance) code << "#define NO_CLIPDISTANCE_SUPPORT\n";
 	code << "#line 1\n";
@@ -430,6 +410,7 @@ std::unique_ptr<VulkanShader> VkShaderManager::LoadFragShader(FString shadername
 	code << "#define NPOT_EMULATION\n";
 #endif
 	code << shaderBindings;
+	code << "layout(set = 1, binding = 0, std140) uniform readonly ViewpointUBO" << ShaderInputsOutputs::GenerateStruct<HWViewpointUniforms>() << ";\n";
 	code << ShaderInputsOutputs::GenerateInputsOutputs(true, true, type, gbufferpass, fb->device->EnabledFeatures.Features.shaderClipDistance, varyings);
 	FString placeholder = "\n";
 
