@@ -1114,7 +1114,9 @@ static FString FormatKB(int kb)
 }
 
 ADD_STAT(vram)
-{ //TODO move somewhere else
+{	// TODO move somewhere else
+	// TODO also grab total AMD gpu memory on windows with WGL_AMD_gpu_association (https://registry.khronos.org/OpenGL/extensions/AMD/WGL_AMD_gpu_association.txt / https://registry.khronos.org/OpenGL/extensions/MESA/GLX_MESA_query_renderer.txt)
+	// (because of GL_NVX_gpu_memory_info, nvidia on windows and linux in general (mesa implements the extension for all GPUs) doesn't need it since it returns total memory as well, not just free memory)
 	int dedicatedMemoryNVidia = -1;
 	glGetIntegerv(GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX, &dedicatedMemoryNVidia);
 	int totalMemoryNVidia = -1;
