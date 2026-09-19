@@ -221,6 +221,7 @@ enum
 	ILF_OWNED =				0x080,
 	ILF_SWAPPED =			0x100,
 	ILF_EXPLICIT_PITCH =	0x200,
+	ILF_LINKED =			0x400,
 };
 
 struct FDynamicLight
@@ -293,6 +294,7 @@ struct FDynamicLight
 	void Deactivate()
 	{
 		flags &= ~(ILF_ACTIVE | ILF_SHADOWMAPPED);
+		UnlinkLight();
 	}
 	void Activate();
 
@@ -315,6 +317,7 @@ struct FDynamicLight
 	void Tick();
 	void UpdateLocation();
 	void AddLightNode(FSection *section, side_t *sidedef);
+	void ReLinkLight();
 	void LinkLight();
 	void UnlinkLight();
 	void ReleaseLight();

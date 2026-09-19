@@ -214,6 +214,8 @@ void FDynamicLight::Activate()
 		m_currentRadius = float(m_cycler.GetVal());
 	}
 	if (m_currentRadius <= 0) m_currentRadius = 1;
+
+	LinkLight();
 }
 
 
@@ -400,7 +402,7 @@ void FDynamicLight::UpdateLocation()
 		if (X() != oldx || Y() != oldy || radius != oldradius)
 		{
 			//Update the light lists
-			LinkLight();
+			ReLinkLight();
 		}
 	}
 }
@@ -630,10 +632,18 @@ void FDynamicLight::CollectWithinRadius(const DVector3 &opos, FSection *section,
 //
 //==========================================================================
 
+void FDynamicLight::ReLinkLight()
+{
+	if(flags & ILF_LINKED)
+	{
+		UnlinkLight();
+	}
+	LinkLight();
+}
+
 void FDynamicLight::LinkLight()
 {
-	UnlinkLight();
-	if (radius>0)
+	if (!(flags & ILF_LINKED) && radius > 0 && IsActive())
 	{
 		// passing in radius*radius allows us to do a distance check without any calls to sqrt
 		FSection *sect = Level->PointInRenderSubsector(Pos)->section;
@@ -641,7 +651,7 @@ void FDynamicLight::LinkLight()
 		dl_validcount++;
 		::validcount++;
 		CollectWithinRadius(Pos, sect, float(radius*radius));
-
+		flags |= ILF_LINKED;
 	}
 }
 
@@ -653,7 +663,6 @@ void FDynamicLight::LinkLight()
 //==========================================================================
 void FDynamicLight::UnlinkLight()
 {
-
 	for(int i = 0; i < touchlists.wall_tlist.SSize(); i++)
 	{
 		auto sidedef = touchlists.wall_tlist[i];
@@ -679,7 +688,7 @@ void FDynamicLight::UnlinkLight()
 	touchlists.flat_tlist.Clear();
 	touchlists.wall_tlist.Clear();
 
-	flags &= ~(ILF_SHADOWMAPPED);
+	flags &= ~(ILF_SHADOWMAPPED | ILF_LINKED);
 }
 
 //==========================================================================
