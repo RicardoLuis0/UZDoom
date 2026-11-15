@@ -23,9 +23,14 @@ Class VisualThinker : Thinker native
 							Prev;
 	native FVector3			Vel;
 	native Vector2			Scale,
+							PrevScale,
 							Offset;
 	native float			Roll,
 							PrevRoll,
+							Angle,
+							PrevAngle,
+							Pitch,
+							PrevPitch,
 							Alpha;
 	native TextureID		Texture;
 	native TranslationID	Translation;
@@ -44,6 +49,9 @@ Class VisualThinker : Thinker native
 	native Color			scolor;
 
 	native Sector			CurSector; // can be null!
+
+	native void ClearModel();
+	native void SetModel(Class<Actor> model, SpriteID sprite, int frame);
 
 	virtual void BeginPlay() {}
 
@@ -104,5 +112,14 @@ Class VisualThinker : Thinker native
 	void DisableParticle()
 	{
 		VisualThinkerFlags &= ~VTF_IsParticle;
+	}
+	
+	void ClearInterpolation()
+	{
+		Prev = Pos;
+		PrevScale = Scale;
+		PrevAngle = Angle;
+		PrevPitch = Pitch;
+		PrevRoll = Roll;
 	}
 }
