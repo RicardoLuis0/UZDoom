@@ -75,9 +75,13 @@ void RenderModel(FModelRenderer *renderer, float x, float y, float z, FSpriteMod
 	{
 		RenderStyle = actor->RenderStyle;
 	}
-	else
+	else if(spr->visualthinker->flags & VTF_UseModelRenderStyle)
 	{
 		RenderStyle = spr->visualthinker->PT.style;
+	}
+	else
+	{
+		RenderStyle = spr->RenderStyle;
 	}
 
 	renderer->BeginDrawModel(RenderStyle, smf_flags, objectToWorldMatrix, orientation < 0);
