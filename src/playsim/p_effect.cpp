@@ -1168,7 +1168,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, UpdateSpriteInfo, UpdateSpriteInfo
 
 bool DVisualThinker::ValidTexture()
 {
-	return ((flags & VTF_IsParticle) || PT.texture.isValid());
+	return ((flags & VTF_ParticleMask) || PT.texture.isValid());
 }
 
 // This runs just like Actor's, make sure to call Super.Tick() in ZScript.
@@ -1336,7 +1336,7 @@ DEFINE_ACTION_FUNCTION_NATIVE(DVisualThinker, SetTranslation, SetTranslation)
 
 int DVisualThinker::GetParticleType() const
 {
-	int flag = (flags & VTF_IsParticle);
+	int flag = (flags & VTF_ParticleMask);
 	switch (flag)
 	{
 	case VTF_ParticleSquare:

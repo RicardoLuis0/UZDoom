@@ -37,11 +37,11 @@ enum EVisualThinkerFlags
 	VTF_DontInterpolate	= 1 << 4, // disable all interpolation
 	VTF_AddLightLevel	= 1 << 5, // adds sector light level to 'LightLevel'
 
-	VTF_ParticleDefault = 0x40, // 1 << 6
-	VTF_ParticleSquare = 0x80, // 1 << 7
-	VTF_ParticleRound = 0xC0, // 1 << 7 + 1 << 6
-	VTF_ParticleSmooth = 0x100, // 1 << 8
-	VTF_IsParticle = 0x1C0,		// 1 << 8 + 1 << 7 + 1 << 6 Renders as a particle instead
+	VTF_ParticleDefault	= 0x040, // 1 << 6
+	VTF_ParticleSquare	= 0x080, // 1 << 7
+	VTF_ParticleRound	= 0x0C0, // 1 << 7 and 1 << 6
+	VTF_ParticleSmooth	= 0x100, // 1 << 8
+	VTF_ParticleMask	= 0x1C0, // 1 << 8 or 1 << 7 or 1 << 6 Renders as a particle instead
 
 	VTF_AnimsDecoupled	= 1 << 9, // decoupled anims
 	VTF_OverrideModelTexture	= 1 << 10, // decoupled anims

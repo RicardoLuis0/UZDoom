@@ -1544,7 +1544,7 @@ void HWSprite::ProcessParticle(HWDrawInfo *di, particle_t *particle, sector_t *s
 		timefrac = 0.;
 
 
-	if (spr && !(spr->flags & VTF_IsParticle))
+	if (spr && !(spr->flags & VTF_ParticleMask))
 	{
 		AdjustVisualThinker(di, spr, sector);
 	}
